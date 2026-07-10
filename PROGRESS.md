@@ -4,35 +4,56 @@
 > anything. Update it at every save point. Replace content — do not append.
 > History lives in git.
 
-**Session:** 0 — build not started
-**Last updated:** 2026-07-10 — by Project Governor, pre-build
-**Live URL:** none yet [Rule: fill in after the first successful deploy]
+**Session:** 1 — build complete
+**Last updated:** 2026-07-10 — by Claude Code, session 1
+**Live URL:** pending — Netlify's native integration deploys on push to `main`;
+builder confirms in the Netlify dashboard (no MCP visibility, see spec Section 4).
 
 ## Current state
-Nothing built. Repo contains CLAUDE.md, PROGRESS.md, product-spec.md, C-MORE-brand-style-sheet.md (brand skill — installed in session 1).
-[Rule: this section describes what exists and works right now — never what is planned. Completed checklist items get absorbed here in compressed form.]
+Tool is built and passes a local build. First Session Setup done: `docs/`
+created (`product-spec.md` moved in), C-MORE brand skill installed at
+`.claude/skills/c-more/SKILL.md` (frontmatter added). Repo root holds only
+`CLAUDE.md` and `PROGRESS.md`.
+
+Single-page form (`src/App.jsx`) holds all entries in React state — no
+routing, no backend, no login. `src/data/lookups.js` hardcodes scope,
+category, subcategory, emission source (23 sources, fixed unit each), and
+facility lists, carried over from the v1.0 `dim_*` seed content per D-5.
+`EntryForm.jsx` does cascading scope→category→subcategory→source selects,
+every field required except Notes, unit auto-filled and read-only.
+`EntryTable.jsx` renders the running session table with a per-row Remove
+button and a Download CSV button (`src/lib/csv.js`, dependency-free writer).
+Verified: `npm install` (129 pkgs) + `npm run build` clean (36 modules, Node
+22); `vite preview` serves the built `dist/` correctly.
 
 ## Last session
-None — the first build session has not happened yet.
-[Rule: 3–5 lines maximum. Replace each session — what was built, changed, or fixed.]
+Session 1: reset the branch to current `main` (which now carries the v2.0
+Tier 1 spec, superseding the Tier 3 build from `main`'s prior history), ran
+First Session Setup, then built the full MVP — form, session table, CSV
+export — from scratch. No Supabase, auth, or routing code carried forward.
 
 ## Remaining work
-- [ ] First Session Setup: create docs/, move reference files, install the c-more brand skill, commit (see CLAUDE.md Session Protocol)
-- [ ] Build Data Entry Form — reporting period, facility, cascading scope/category/subcategory/source, activity value, auto-filled unit, data quality rating, notes; running session table with remove-entry action
-- [ ] Wire Export: Download CSV button that exports all current session entries
-- [ ] Local test pass — full walkthrough of every view before deploying, including refresh-clears-data check
-- [ ] Acceptance criteria pass — verify every criterion in spec Section "Acceptance Criteria" before deploy
-- [ ] Deploy to Netlify — builder confirms the build succeeded in the Netlify dashboard (Netlify MCP not active; Claude Code has no visibility into deploy status)
-[Rule: completed items leave this list and are absorbed into Current state. This list only shrinks.]
+- [ ] Local test pass — full manual walkthrough (add entry, remove entry,
+      refresh-clears-data check, download CSV and open it) before deploy
+- [ ] Acceptance criteria pass — walk spec Section 13 end-to-end once deployed
+- [ ] Deploy to Netlify — builder confirms the push-triggered build succeeded
+      in the Netlify dashboard (Netlify MCP not active per spec Section 4)
 
 ## Build decisions
-None yet.
-[Rule: one line per decision made during the build that is not in the spec — prompt structures, field formats, naming choices, library picks. Future sessions depend on these to stay consistent.]
+- Hardcoded lookup values reuse the v1.0 `dim_scope` / `dim_category` /
+  `dim_subcategory` / `dim_emission_source` / `dim_facility` seed content
+  verbatim (names, units, hierarchy) — no changes, per the Open Question in
+  spec Section 15 assuming no changes needed unless told otherwise.
+  `dim_emission_factor` / `dim_methodology` were NOT carried over — this
+  tool performs no calculation, so factors/methodology have no purpose here.
+- No React Router: a single page needs no client-side routing.
+- CSV export uses a small dependency-free writer (`src/lib/csv.js`) rather
+  than a library, matching the "no external services" rule in spec Section 11.
+- Entry `id` uses `crypto.randomUUID()` (browser-native) purely as a React
+  list key / remove-target — it is never persisted or sent anywhere.
 
 ## Known issues
-- A v1.0 Tier 3 codebase for a more advanced version of this tool exists in project history — see CLAUDE.md Hard Rules for what may and may not be reused from it.
-[Rule: bugs, edge cases, and deferred fixes. One line each. Remove when resolved.]
+- None currently.
 
 ## Notes for next session
 None.
-[Rule: the builder writes here between sessions. Claude Code reads these aloud at session start, acts on them, then clears this section.]
