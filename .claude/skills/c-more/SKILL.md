@@ -1,3 +1,8 @@
+---
+name: c-more
+description: C-MORE brand style system for PurePastures GHG tools. Invoke for any UI or visual work — colors, typography, layout, components.
+---
+
 # C-MORE Brand Style Sheet
 
 > The official C-MORE brand skill file was not provided to this build. This sheet
