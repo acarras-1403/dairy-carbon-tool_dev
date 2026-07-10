@@ -33,9 +33,14 @@ First Session Setup, then built the full MVP — form, session table, CSV
 export — from scratch. No Supabase, auth, or routing code carried forward.
 
 ## Remaining work
-- [ ] Local test pass — full manual walkthrough (add entry, remove entry,
-      refresh-clears-data check, download CSV and open it) before deploy
+- [x] Local test pass — full manual walkthrough via a headless-Chromium
+      driver (`vite dev` + Playwright, screenshots taken): added an entry,
+      confirmed it renders correctly in the session table, removed it,
+      added a second entry, downloaded the CSV (correct headers/values),
+      refreshed the page, confirmed the table returned to 0 entries and the
+      form reset — no persistence anywhere, as designed
 - [ ] Acceptance criteria pass — walk spec Section 13 end-to-end once deployed
+      (criteria 1–5 verified locally above; criteria 6–7 need the live URL)
 - [ ] Deploy to Netlify — builder confirms the push-triggered build succeeded
       in the Netlify dashboard (Netlify MCP not active per spec Section 4)
 
