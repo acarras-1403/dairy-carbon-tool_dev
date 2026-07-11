@@ -7,29 +7,21 @@ import {
   DATA_QUALITY_OPTIONS,
   deriveHierarchy,
 } from '../data/lookups.js'
-import { recentPeriods, currentPeriod } from '../lib/periods.js'
+import { findEntryIssues } from '../lib/importRows.js'
 
-const blank = {
-  reporting_period: currentPeriod(),
-  facility_id: '',
-  category_id: '',
-  subcategory_id: '',
-  source_id: '',
-  activity_data_value: '',
-  data_quality_rating: '',
-  notes: '',
-}
+function ReviewRow({ row, onPromote, onDiscard }) {
+  const [form, setForm] = useState({
+    reporting_period: row.reporting_period,
+    facility_id: row.facility_id,
+    category_id: row.category_id,
+    subcategory_id: row.subcategory_id,
+    source_id: row.source_id,
+    activity_data_value: row.activity_data_value,
+    data_quality_rating: row.data_quality_rating,
+    notes: row.notes,
+  })
+  const [promoteError, setPromoteError] = useState('')
 
-// Every field required except Notes (spec Section 8 / Business Rules).
-export default function EntryForm({ onAdd }) {
-  const [form, setForm] = useState(blank)
-  const [error, setError] = useState('')
-
-  const periods = useMemo(() => recentPeriods(12), [])
-
-  // Full unrestricted category list — Scope is never a manual input, it is
-  // derived from the selected source (single derivation point in lookups.js).
-  const categories = CATEGORIES
   const subcategories = useMemo(
     () => SUBCATEGORIES.filter((s) => s.categoryId === form.category_id),
     [form.category_id],
@@ -43,7 +35,6 @@ export default function EntryForm({ onAdd }) {
       ),
     [form.category_id, form.subcategory_id],
   )
-  const selectedSource = SOURCES.find((s) => s.id === form.source_id)
   const hierarchy = form.source_id ? deriveHierarchy(form.source_id) : null
 
   function set(field, value) {
@@ -56,76 +47,56 @@ export default function EntryForm({ onAdd }) {
       if (field === 'subcategory_id') next.source_id = ''
       return next
     })
+    setPromoteError('')
   }
 
-  function handleSubmit(e) {
-    e.preventDefault()
-    setError('')
-
-    if (
-      !form.reporting_period ||
-      !form.facility_id ||
-      !form.category_id ||
-      !form.source_id ||
-      !form.activity_data_value ||
-      !form.data_quality_rating
-    ) {
-      setError('Please fill in all required fields.')
-      return
-    }
-    const value = Number(form.activity_data_value)
-    if (Number.isNaN(value)) {
-      setError('Activity value must be a number.')
-      return
-    }
-
-    onAdd({
-      id: crypto.randomUUID(),
+  function handlePromote() {
+    const value = form.activity_data_value === '' ? '' : Number(form.activity_data_value)
+    const candidate = {
       reporting_period: form.reporting_period,
       facility_id: form.facility_id,
-      facility_name: FACILITIES.find((f) => f.id === form.facility_id)?.name ?? form.facility_id,
+      facility_name: FACILITIES.find((f) => f.id === form.facility_id)?.name ?? '',
       scope_id: hierarchy?.scope_id ?? '',
       category_id: form.category_id,
-      category_name: hierarchy?.category_name ?? CATEGORIES.find((c) => c.id === form.category_id)?.name ?? form.category_id,
+      category_name: hierarchy?.category_name ?? '',
       subcategory_id: form.subcategory_id || null,
       subcategory_name: hierarchy?.subcategory_name ?? '',
       source_id: form.source_id,
-      source_name: selectedSource?.name ?? form.source_id,
-      activity_data_value: value,
-      activity_data_unit: selectedSource?.unit ?? '',
+      source_name: hierarchy?.source_name ?? '',
+      activity_data_value: Number.isNaN(value) ? '' : value,
+      activity_data_unit: hierarchy?.unit ?? '',
       data_quality_rating: form.data_quality_rating,
-      notes: form.notes || '',
-    })
-    setForm(blank)
+      notes: form.notes,
+    }
+    const issues = findEntryIssues(candidate)
+    if (issues.length > 0) {
+      setPromoteError(issues.join('; '))
+      return
+    }
+    onPromote(row.id, { id: row.id, ...candidate })
   }
 
   return (
-    <form onSubmit={handleSubmit} className="card space-y-4">
-      <h2 className="text-lg font-semibold text-deepblue">Log activity data</h2>
+    <div className="rounded-md border border-line p-4 space-y-3">
+      <p className="text-sm font-medium text-red-700">{row.issues.join('; ')}</p>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
           <label className="label">Reporting period</label>
-          <select
+          <input
+            type="text"
+            placeholder="YYYY-MM"
             className="field-input"
             value={form.reporting_period}
             onChange={(e) => set('reporting_period', e.target.value)}
-          >
-            {periods.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
+          />
         </div>
-
         <div>
           <label className="label">Facility</label>
           <select
             className="field-input"
             value={form.facility_id}
             onChange={(e) => set('facility_id', e.target.value)}
-            required
           >
             <option value="">Select facility…</option>
             {FACILITIES.map((f) => (
@@ -135,24 +106,21 @@ export default function EntryForm({ onAdd }) {
             ))}
           </select>
         </div>
-
         <div>
           <label className="label">Category</label>
           <select
             className="field-input"
             value={form.category_id}
             onChange={(e) => set('category_id', e.target.value)}
-            required
           >
             <option value="">Select category…</option>
-            {categories.map((c) => (
+            {CATEGORIES.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
             ))}
           </select>
         </div>
-
         <div>
           <label className="label">Subcategory</label>
           <select
@@ -169,7 +137,6 @@ export default function EntryForm({ onAdd }) {
             ))}
           </select>
         </div>
-
         <div>
           <label className="label">Emission source</label>
           <select
@@ -177,7 +144,6 @@ export default function EntryForm({ onAdd }) {
             value={form.source_id}
             onChange={(e) => set('source_id', e.target.value)}
             disabled={!form.category_id}
-            required
           >
             <option value="">Select source…</option>
             {sources.map((s) => (
@@ -186,11 +152,7 @@ export default function EntryForm({ onAdd }) {
               </option>
             ))}
           </select>
-          {hierarchy && (
-            <p className="mt-1 text-xs text-slate">Scope: {hierarchy.scope_name}</p>
-          )}
         </div>
-
         <div>
           <label className="label">Activity value</label>
           <div className="flex items-center gap-2">
@@ -200,21 +162,18 @@ export default function EntryForm({ onAdd }) {
               className="field-input"
               value={form.activity_data_value}
               onChange={(e) => set('activity_data_value', e.target.value)}
-              required
             />
             <span className="whitespace-nowrap rounded-md bg-deepblue/5 px-3 py-2 text-sm text-slate">
-              {selectedSource?.unit ?? '—'}
+              {hierarchy?.unit ?? '—'}
             </span>
           </div>
         </div>
-
         <div>
           <label className="label">Data quality</label>
           <select
             className="field-input"
             value={form.data_quality_rating}
             onChange={(e) => set('data_quality_rating', e.target.value)}
-            required
           >
             <option value="">Select…</option>
             {DATA_QUALITY_OPTIONS.map((q) => (
@@ -224,9 +183,8 @@ export default function EntryForm({ onAdd }) {
             ))}
           </select>
         </div>
-
-        <div className="sm:col-span-2">
-          <label className="label">Notes (optional)</label>
+        <div className="sm:col-span-3">
+          <label className="label">Notes</label>
           <textarea
             className="field-input"
             rows={2}
@@ -236,13 +194,39 @@ export default function EntryForm({ onAdd }) {
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {promoteError && <p className="text-sm text-red-600">{promoteError}</p>}
 
-      <div className="flex justify-end">
-        <button type="submit" className="btn-primary">
-          Add entry
+      <div className="flex justify-end gap-2">
+        <button className="btn-ghost" onClick={() => onDiscard(row.id)}>
+          Discard
+        </button>
+        <button className="btn-primary" onClick={handlePromote}>
+          Promote to session table
         </button>
       </div>
-    </form>
+    </div>
+  )
+}
+
+// Holds only flagged rows from CSV import (spec Section 8) — fix and
+// promote to the main table, or discard.
+export default function DataReview({ rows, onPromote, onDiscard }) {
+  if (rows.length === 0) return null
+
+  return (
+    <section className="card space-y-4">
+      <h2 className="text-lg font-semibold text-deepblue">
+        Data Review — needs attention ({rows.length})
+      </h2>
+      <p className="text-sm text-slate">
+        These rows had an unparseable date or a required field still blank after
+        import mapping. Fix and promote them, or discard.
+      </p>
+      <div className="space-y-3">
+        {rows.map((row) => (
+          <ReviewRow key={row.id} row={row} onPromote={onPromote} onDiscard={onDiscard} />
+        ))}
+      </div>
+    </section>
   )
 }

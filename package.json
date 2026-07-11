@@ -1,9 +1,9 @@
 {
   "name": "purepastures-ghg-data-entry-mvp",
   "private": true,
-  "version": "2.0.0",
+  "version": "3.0.0",
   "type": "module",
-  "description": "PurePastures GHG Activity Data Entry Tool (MVP) — Tier 1, session-only, no login, CSV export.",
+  "description": "PurePastures GHG Activity Data Entry Tool — Tier 1, session-only, no login, manual entry + CSV bulk import, CSV export.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

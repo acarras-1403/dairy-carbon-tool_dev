@@ -72,3 +72,48 @@ export const FACILITIES = [
 ]
 
 export const DATA_QUALITY_OPTIONS = ['measured', 'calculated', 'estimated', 'proxy']
+
+// Single derivation point for scope/category/subcategory, reused by the
+// manual entry form and CSV import alike (spec Section 9 — one derivation
+// point, not duplicated per entry path). Scope is never stored or selected
+// directly; it is read off the source's fixed place in the hierarchy.
+export function deriveHierarchy(sourceId) {
+  const source = SOURCES.find((s) => s.id === sourceId)
+  if (!source) return null
+  const category = CATEGORIES.find((c) => c.id === source.categoryId) ?? null
+  const subcategory = SUBCATEGORIES.find((s) => s.id === source.subcategoryId) ?? null
+  const scope = SCOPES.find((s) => s.id === category?.scopeId) ?? null
+  return {
+    scope_id: scope?.id ?? null,
+    scope_name: scope?.name ?? '',
+    category_id: source.categoryId,
+    category_name: category?.name ?? '',
+    subcategory_id: source.subcategoryId ?? null,
+    subcategory_name: subcategory?.name ?? '',
+    source_id: source.id,
+    source_name: source.name,
+    unit: source.unit,
+  }
+}
+
+// Case-insensitive, trimmed exact match against a lookup list's `name` (or
+// `id`) — used to auto-resolve CSV raw values that already match a
+// hardcoded option, so Value Mapping only shows genuinely unmapped values.
+export function findExactMatch(list, rawValue) {
+  const needle = String(rawValue ?? '').trim().toLowerCase()
+  if (!needle) return null
+  return (
+    list.find(
+      (item) =>
+        item.name.trim().toLowerCase() === needle || item.id.trim().toLowerCase() === needle,
+    ) ?? null
+  )
+}
+
+// Same idea for plain-string option lists (DATA_QUALITY_OPTIONS) — returns
+// the canonical string, not an object.
+export function findExactStringMatch(list, rawValue) {
+  const needle = String(rawValue ?? '').trim().toLowerCase()
+  if (!needle) return null
+  return list.find((item) => item.trim().toLowerCase() === needle) ?? null
+}
