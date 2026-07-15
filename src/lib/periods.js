@@ -53,3 +53,15 @@ export function parseFlexibleDate(raw) {
 export function periodFromParsedDate({ year, month }) {
   return `${year}-${String(month).padStart(2, '0')}`
 }
+
+// Facility Reporting Period is a plain calendar year (spec Section 5, v4.0).
+export function currentYear(now = new Date()) {
+  return now.getUTCFullYear()
+}
+
+export function recentYears(count = 6, now = new Date()) {
+  const year = now.getUTCFullYear()
+  const out = []
+  for (let i = 0; i < count; i++) out.push(year - i)
+  return out
+}

@@ -73,6 +73,54 @@ export const FACILITIES = [
 
 export const DATA_QUALITY_OPTIONS = ['measured', 'calculated', 'estimated', 'proxy']
 
+// emission_source → conversion_factor lookup (spec Section 9, v4.0). Every
+// factor is a placeholder 1.0, marked TBD — swapping in real factors is a
+// data edit to this table, not a logic change (Hard Rules). base_unit
+// matches the source's display unit for now, since no real factor exists
+// yet to justify a different base unit.
+export const CONVERSION_FACTORS = Object.fromEntries(
+  SOURCES.map((s) => [s.id, { factor: 1.0, base_unit: s.unit, status: 'TBD' }]),
+)
+
+// Single derivation point for the raw → converted computation, reused by
+// manual entry, CSV import, and Data Review promote alike. Returns null if
+// the source or value isn't resolvable — callers decide how to flag that.
+export function convertActivityValue(sourceId, rawValue) {
+  const conversion = CONVERSION_FACTORS[sourceId]
+  const value = Number(rawValue)
+  if (!conversion || rawValue === '' || rawValue == null || Number.isNaN(value)) return null
+  return {
+    value_converted: value * conversion.factor,
+    unit_converted: conversion.base_unit,
+  }
+}
+
+// Checks a raw unit (e.g. from a mapped CSV column) against the expected
+// unit for a source — case-insensitive, trimmed, same tolerance as
+// findExactMatch. Manual entry's unit is always auto-filled/locked so this
+// only meaningfully rejects mismatched CSV rows (spec Section 9).
+export function unitMatchesSource(sourceId, rawUnit) {
+  const source = SOURCES.find((s) => s.id === sourceId)
+  if (!source) return false
+  return String(rawUnit ?? '').trim().toLowerCase() === source.unit.trim().toLowerCase()
+}
+
+// Facility Reporting Period lookups (new, v4.0). Production volume and
+// annual revenue use one fixed unit/currency each — no multi-currency FX,
+// no per-facility unit variation (spec Section 12, out of scope).
+export const FACILITY_COUNTRIES = [
+  'Ireland',
+  'United Kingdom',
+  'Netherlands',
+  'Germany',
+  'France',
+  'United States',
+  'Other',
+]
+
+export const PRODUCTION_UNIT = 'litres (milk)'
+export const CURRENCY = 'EUR'
+
 // Single derivation point for scope/category/subcategory, reused by the
 // manual entry form and CSV import alike (spec Section 9 — one derivation
 // point, not duplicated per entry path). Scope is never stored or selected

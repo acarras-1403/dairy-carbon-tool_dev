@@ -6,6 +6,7 @@ import {
   FACILITIES,
   DATA_QUALITY_OPTIONS,
   deriveHierarchy,
+  convertActivityValue,
 } from '../data/lookups.js'
 import { findEntryIssues } from '../lib/importRows.js'
 
@@ -16,9 +17,11 @@ function ReviewRow({ row, onPromote, onDiscard }) {
     category_id: row.category_id,
     subcategory_id: row.subcategory_id,
     source_id: row.source_id,
-    activity_data_value: row.activity_data_value,
+    activity_data_value_raw: row.activity_data_value_raw,
     data_quality_rating: row.data_quality_rating,
     notes: row.notes,
+    evidence_link: row.evidence_link ?? '',
+    reviewer: row.reviewer ?? '',
   })
   const [promoteError, setPromoteError] = useState('')
 
@@ -51,7 +54,10 @@ function ReviewRow({ row, onPromote, onDiscard }) {
   }
 
   function handlePromote() {
-    const value = form.activity_data_value === '' ? '' : Number(form.activity_data_value)
+    const value =
+      form.activity_data_value_raw === '' ? '' : Number(form.activity_data_value_raw)
+    const conversion =
+      form.source_id && !Number.isNaN(value) ? convertActivityValue(form.source_id, value) : null
     const candidate = {
       reporting_period: form.reporting_period,
       facility_id: form.facility_id,
@@ -63,10 +69,14 @@ function ReviewRow({ row, onPromote, onDiscard }) {
       subcategory_name: hierarchy?.subcategory_name ?? '',
       source_id: form.source_id,
       source_name: hierarchy?.source_name ?? '',
-      activity_data_value: Number.isNaN(value) ? '' : value,
-      activity_data_unit: hierarchy?.unit ?? '',
+      activity_data_value_raw: Number.isNaN(value) ? '' : value,
+      activity_data_unit_raw: hierarchy?.unit ?? '',
+      activity_data_value_converted: conversion?.value_converted ?? '',
+      activity_data_unit_converted: conversion?.unit_converted ?? '',
       data_quality_rating: form.data_quality_rating,
       notes: form.notes,
+      evidence_link: form.evidence_link,
+      reviewer: form.reviewer,
     }
     const issues = findEntryIssues(candidate)
     if (issues.length > 0) {
@@ -160,8 +170,8 @@ function ReviewRow({ row, onPromote, onDiscard }) {
               type="number"
               step="any"
               className="field-input"
-              value={form.activity_data_value}
-              onChange={(e) => set('activity_data_value', e.target.value)}
+              value={form.activity_data_value_raw}
+              onChange={(e) => set('activity_data_value_raw', e.target.value)}
             />
             <span className="whitespace-nowrap rounded-md bg-deepblue/5 px-3 py-2 text-sm text-slate">
               {hierarchy?.unit ?? '—'}
@@ -182,6 +192,24 @@ function ReviewRow({ row, onPromote, onDiscard }) {
               </option>
             ))}
           </select>
+        </div>
+        <div>
+          <label className="label">Evidence link</label>
+          <input
+            type="text"
+            className="field-input"
+            value={form.evidence_link}
+            onChange={(e) => set('evidence_link', e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="label">Reviewer</label>
+          <input
+            type="text"
+            className="field-input"
+            value={form.reviewer}
+            onChange={(e) => set('reviewer', e.target.value)}
+          />
         </div>
         <div className="sm:col-span-3">
           <label className="label">Notes</label>

@@ -6,6 +6,7 @@ import {
   FACILITIES,
   DATA_QUALITY_OPTIONS,
   deriveHierarchy,
+  convertActivityValue,
 } from '../data/lookups.js'
 import { recentPeriods, currentPeriod } from '../lib/periods.js'
 
@@ -15,9 +16,11 @@ const blank = {
   category_id: '',
   subcategory_id: '',
   source_id: '',
-  activity_data_value: '',
+  activity_data_value_raw: '',
   data_quality_rating: '',
   notes: '',
+  evidence_link: '',
+  reviewer: '',
 }
 
 // Every field required except Notes (spec Section 8 / Business Rules).
@@ -67,17 +70,18 @@ export default function EntryForm({ onAdd }) {
       !form.facility_id ||
       !form.category_id ||
       !form.source_id ||
-      !form.activity_data_value ||
+      !form.activity_data_value_raw ||
       !form.data_quality_rating
     ) {
       setError('Please fill in all required fields.')
       return
     }
-    const value = Number(form.activity_data_value)
+    const value = Number(form.activity_data_value_raw)
     if (Number.isNaN(value)) {
       setError('Activity value must be a number.')
       return
     }
+    const conversion = convertActivityValue(form.source_id, value)
 
     onAdd({
       id: crypto.randomUUID(),
@@ -91,10 +95,14 @@ export default function EntryForm({ onAdd }) {
       subcategory_name: hierarchy?.subcategory_name ?? '',
       source_id: form.source_id,
       source_name: selectedSource?.name ?? form.source_id,
-      activity_data_value: value,
-      activity_data_unit: selectedSource?.unit ?? '',
+      activity_data_value_raw: value,
+      activity_data_unit_raw: selectedSource?.unit ?? '',
+      activity_data_value_converted: conversion?.value_converted ?? '',
+      activity_data_unit_converted: conversion?.unit_converted ?? '',
       data_quality_rating: form.data_quality_rating,
       notes: form.notes || '',
+      evidence_link: form.evidence_link || '',
+      reviewer: form.reviewer || '',
     })
     setForm(blank)
   }
@@ -198,8 +206,8 @@ export default function EntryForm({ onAdd }) {
               type="number"
               step="any"
               className="field-input"
-              value={form.activity_data_value}
-              onChange={(e) => set('activity_data_value', e.target.value)}
+              value={form.activity_data_value_raw}
+              onChange={(e) => set('activity_data_value_raw', e.target.value)}
               required
             />
             <span className="whitespace-nowrap rounded-md bg-deepblue/5 px-3 py-2 text-sm text-slate">
@@ -223,6 +231,26 @@ export default function EntryForm({ onAdd }) {
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label className="label">Evidence link (optional)</label>
+          <input
+            type="text"
+            className="field-input"
+            value={form.evidence_link}
+            onChange={(e) => set('evidence_link', e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label className="label">Reviewer (optional)</label>
+          <input
+            type="text"
+            className="field-input"
+            value={form.reviewer}
+            onChange={(e) => set('reviewer', e.target.value)}
+          />
         </div>
 
         <div className="sm:col-span-2">

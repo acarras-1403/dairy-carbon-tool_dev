@@ -6,9 +6,13 @@ const COLUMNS = [
   { key: 'category_name', label: 'Category' },
   { key: 'subcategory_name', label: 'Subcategory' },
   { key: 'source_name', label: 'Emission source' },
-  { key: 'activity_data_value', label: 'Value' },
-  { key: 'activity_data_unit', label: 'Unit' },
+  { key: 'activity_data_value_raw', label: 'Value (raw)' },
+  { key: 'activity_data_unit_raw', label: 'Unit (raw)' },
+  { key: 'activity_data_value_converted', label: 'Value (converted)' },
+  { key: 'activity_data_unit_converted', label: 'Unit (converted)' },
   { key: 'data_quality_rating', label: 'Data quality' },
+  { key: 'evidence_link', label: 'Evidence link' },
+  { key: 'reviewer', label: 'Reviewer' },
   { key: 'notes', label: 'Notes' },
 ]
 
@@ -21,10 +25,10 @@ export default function EntryTable({ entries, onRemove }) {
     <section className="card space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-deepblue">
-          Session entries ({entries.length})
+          Activity data — session entries ({entries.length})
         </h2>
         <button className="btn-accent" disabled={!entries.length} onClick={handleDownload}>
-          Download CSV
+          Download Activity Data CSV
         </button>
       </div>
 
@@ -42,9 +46,13 @@ export default function EntryTable({ entries, onRemove }) {
                 <th className="py-2 pr-3">Facility</th>
                 <th className="py-2 pr-3">Category</th>
                 <th className="py-2 pr-3">Source</th>
-                <th className="py-2 pr-3 text-right">Value</th>
-                <th className="py-2 pr-3">Unit</th>
+                <th className="py-2 pr-3 text-right">Raw value</th>
+                <th className="py-2 pr-3">Raw unit</th>
+                <th className="py-2 pr-3 text-right">Converted value</th>
+                <th className="py-2 pr-3">Converted unit</th>
                 <th className="py-2 pr-3">Quality</th>
+                <th className="py-2 pr-3">Evidence link</th>
+                <th className="py-2 pr-3">Reviewer</th>
                 <th className="py-2 pr-3">Notes</th>
                 <th className="py-2 pr-3"></th>
               </tr>
@@ -57,10 +65,20 @@ export default function EntryTable({ entries, onRemove }) {
                   <td className="py-2 pr-3">{row.category_name}</td>
                   <td className="py-2 pr-3">{row.source_name}</td>
                   <td className="py-2 pr-3 text-right">
-                    {Number(row.activity_data_value).toLocaleString()}
+                    {Number(row.activity_data_value_raw).toLocaleString()}
                   </td>
-                  <td className="py-2 pr-3">{row.activity_data_unit}</td>
+                  <td className="py-2 pr-3">{row.activity_data_unit_raw}</td>
+                  <td className="py-2 pr-3 text-right">
+                    {row.activity_data_value_converted === ''
+                      ? '—'
+                      : Number(row.activity_data_value_converted).toLocaleString()}
+                  </td>
+                  <td className="py-2 pr-3">{row.activity_data_unit_converted}</td>
                   <td className="py-2 pr-3">{row.data_quality_rating}</td>
+                  <td className="py-2 pr-3 max-w-xs truncate text-slate" title={row.evidence_link}>
+                    {row.evidence_link}
+                  </td>
+                  <td className="py-2 pr-3">{row.reviewer}</td>
                   <td className="py-2 pr-3 max-w-xs text-slate">{row.notes}</td>
                   <td className="py-2 pr-3">
                     <button className="btn-ghost px-2 py-1" onClick={() => onRemove(row.id)}>

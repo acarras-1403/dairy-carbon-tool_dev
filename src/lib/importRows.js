@@ -8,6 +8,8 @@ import {
   deriveHierarchy,
   findExactMatch,
   findExactStringMatch,
+  convertActivityValue,
+  unitMatchesSource,
 } from '../data/lookups.js'
 import { parseFlexibleDate, periodFromParsedDate } from './periods.js'
 
@@ -15,8 +17,11 @@ export const MAPPABLE_FIELDS = [
   { key: 'facility', label: 'Facility' },
   { key: 'source', label: 'Emission source' },
   { key: 'purchase_date', label: 'Purchase date' },
-  { key: 'activity_data_value', label: 'Activity value' },
+  { key: 'activity_data_value_raw', label: 'Activity value' },
+  { key: 'activity_data_unit_raw', label: 'Activity unit' },
   { key: 'data_quality_rating', label: 'Data quality' },
+  { key: 'evidence_link', label: 'Evidence link' },
+  { key: 'reviewer', label: 'Reviewer' },
 ]
 
 const CATEGORICAL_FIELDS = ['facility', 'source', 'data_quality_rating']
@@ -66,18 +71,26 @@ function resolveValue(field, raw, valueMap) {
 
 // Required-field check shared by CSV row processing and Data Review's
 // promote action — one definition of "complete" for an entry, reused by
-// both entry paths rather than duplicated.
+// both entry paths rather than duplicated. An unrecognized raw unit for the
+// mapped source flags the row here too, same fallback pattern as an
+// unparseable date (spec Section 9, v4.0) — manual/promoted entries always
+// carry the auto-filled, locked unit so this never fires for them.
 export function findEntryIssues(entry) {
   const issues = []
   if (!entry.reporting_period) issues.push('Reporting period missing or unparseable')
   if (!entry.facility_id) issues.push('Facility missing or unmapped')
   if (!entry.source_id) issues.push('Emission source missing or unmapped')
   if (
-    entry.activity_data_value === '' ||
-    entry.activity_data_value == null ||
-    Number.isNaN(Number(entry.activity_data_value))
+    entry.activity_data_value_raw === '' ||
+    entry.activity_data_value_raw == null ||
+    Number.isNaN(Number(entry.activity_data_value_raw))
   )
     issues.push('Activity value missing or not a number')
+  if (!entry.activity_data_unit_raw) {
+    issues.push('Activity unit missing')
+  } else if (entry.source_id && !unitMatchesSource(entry.source_id, entry.activity_data_unit_raw)) {
+    issues.push('Unrecognized unit for the mapped emission source')
+  }
   if (!entry.data_quality_rating) issues.push('Data quality rating missing or unmapped')
   return issues
 }
@@ -93,11 +106,21 @@ export function buildEntryFromCsvRow(row, columnMap, valueMap, noteColumns) {
   const dateRaw = columnMap.purchase_date ? row[columnMap.purchase_date] : ''
   const parsedDate = parseFlexibleDate(dateRaw)
 
-  const valueRaw = columnMap.activity_data_value ? row[columnMap.activity_data_value] : ''
+  const valueRaw = columnMap.activity_data_value_raw ? row[columnMap.activity_data_value_raw] : ''
   const activityValue = valueRaw === '' ? NaN : Number(valueRaw)
+
+  const unitRaw = (columnMap.activity_data_unit_raw ? row[columnMap.activity_data_unit_raw] : '').trim()
 
   const qualityRaw = columnMap.data_quality_rating ? row[columnMap.data_quality_rating] : ''
   const dataQuality = resolveValue('data_quality_rating', qualityRaw, valueMap)
+
+  const evidenceLink = (columnMap.evidence_link ? row[columnMap.evidence_link] : '').trim()
+  const reviewer = (columnMap.reviewer ? row[columnMap.reviewer] : '').trim()
+
+  const conversion =
+    sourceId && unitMatchesSource(sourceId, unitRaw)
+      ? convertActivityValue(sourceId, activityValue)
+      : null
 
   const notes = noteColumns
     .map((h) => [h, (row[h] ?? '').trim()])
@@ -117,10 +140,14 @@ export function buildEntryFromCsvRow(row, columnMap, valueMap, noteColumns) {
     subcategory_name: hierarchy?.subcategory_name ?? '',
     source_id: sourceId ?? '',
     source_name: hierarchy?.source_name ?? sourceRaw ?? '',
-    activity_data_value: Number.isNaN(activityValue) ? '' : activityValue,
-    activity_data_unit: hierarchy?.unit ?? '',
+    activity_data_value_raw: Number.isNaN(activityValue) ? '' : activityValue,
+    activity_data_unit_raw: unitRaw,
+    activity_data_value_converted: conversion?.value_converted ?? '',
+    activity_data_unit_converted: conversion?.unit_converted ?? '',
     data_quality_rating: dataQuality ?? '',
     notes,
+    evidence_link: evidenceLink,
+    reviewer,
   }
 }
 
