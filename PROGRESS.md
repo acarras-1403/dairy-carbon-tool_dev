@@ -135,13 +135,24 @@ both entry paths.
 [Rule: one line per decision made during the build that is not in the spec — prompt structures, field formats, naming choices, library picks. Future sessions depend on these to stay consistent.]
 
 ## Known issues
+- **Resolved this session, after deploy:** the first live deploy showed
+  "Could not load persisted data from Supabase" with zero network requests
+  and no console output. Root cause: `VITE_SUPABASE_ANON_KEY`, as entered
+  in the Netlify dashboard, had its `--` (double hyphen, inside the JWT
+  signature) silently converted to a single dash by macOS/browser smart-
+  punctuation on paste — an invalid header value that made the browser's
+  `fetch()` throw synchronously ("String contains non ISO-8859-1 code
+  point") before any request left the page, silently caught by the app's
+  error handling. Fixed by rewriting the env var via the Netlify API
+  directly (bypassing the browser text field entirely) rather than
+  re-pasting. Confirmed live afterward: Facility Reporting Period submit →
+  reload → still present.
 - This build session's sandbox blocked outbound HTTPS to `*.supabase.co`
-  directly from the browser/Node (org egress policy, confirmed via the
-  agent-proxy status endpoint — not a code defect). Full live-browser
-  persistence testing (the actual insert → reload → still-there loop
-  through the deployed app) has not been done yet — only DB-layer
-  verification via the Supabase MCP connection and browser verification of
-  the pre-network client-side logic. See "Remaining work."
+  and even `*.netlify.app` directly from the browser/Node (org egress
+  policy, confirmed via the agent-proxy status endpoint — not a code
+  defect). DB-layer testing used the Supabase MCP connection instead; live
+  diagnosis of the anon-key issue above was done collaboratively with the
+  builder's own browser DevTools.
 - Two Supabase projects unrelated to this build already existed in the org
   before this session (`purepastures-ghg`, `acarras-1403's Project`, both
   dated 2026-07-04) — neither was touched; cleanup is a builder decision,
