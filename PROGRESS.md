@@ -4,130 +4,148 @@
 > anything. Update it at every save point. Replace content — do not append.
 > History lives in git.
 
-**Session:** 3 — v4.0 build complete
-**Last updated:** 2026-07-15 — by Claude Code, session 3
+**Session:** 4 — v5.0 build complete
+**Last updated:** 2026-07-16 — by Claude Code, session 4
 **Live URL:** pending — Netlify's native integration deploys on push to `main`;
 builder confirms in the Netlify dashboard (no MCP visibility, see spec Section 4).
 
 ## Current state
-Tool matches product-spec.md v4.0 (Tier 1, D2+A1 — session-only, no login,
-no backend). `docs/` re-created and `product-spec.md` moved back in again
-(v4.0 had been re-uploaded flat to the repo root, same failure mode as
-session 2's v3.0 upload — see Known issues).
+Tool matches product-spec.md v5.0 (Tier 2, D3+A1 — persisted, no login).
+Promoted both tables from session-only (D2) to Supabase (D3), reversing
+D-9's earlier deferral (D-11).
 
-Activity Data schema split (`src/data/lookups.js`, `EntryForm.jsx`,
-`DataReview.jsx`, `importRows.js`): `activity_data_value`/`unit` split into
-`_raw` (user-entered/mapped) and `_converted` (computed) pairs. New optional
-`evidence_link` and `reviewer` fields on manual entry, CSV import (as
-mappable columns), and Data Review. Conversion is computed by
-`convertActivityValue()` against `CONVERSION_FACTORS`, a hardcoded
-`emission_source → { factor, base_unit, status }` table — every factor is a
-placeholder `1.0`/`TBD`, `base_unit` equals the source's existing display
-unit. One derivation point, reused by manual entry, CSV import, and Data
-Review promote — not duplicated per entry path (same pattern as
-`deriveHierarchy`).
+A brand-new Supabase project `purepastures` (id `ztkgbowwrlszbbfuhkid`,
+region eu-central-1/Frankfurt, Free plan) was created via Supabase MCP —
+explicitly not reusing either pre-existing project already in the org
+(`purepastures-ghg`, `acarras-1403's Project`, both dated 2026-07-04, one
+almost certainly the prohibited v1.0 project; see Known issues). Schema
+(`activity_data`, `facility_reporting_period`) and RLS (anon read+insert
+only, no update/delete) built via `apply_migration`; confirmed correct with
+the security advisor and by executing SQL as the `anon` role directly
+(select/insert succeed, update/delete silently affect 0 rows). Full detail
+in `docs/supabase-setup.md` (new this session — schema source of truth).
 
-CSV import's unit fallback (spec Section 9): a new `activity_data_unit_raw`
-mappable column is checked against the mapped source's expected unit via
-`unitMatchesSource()`. A mismatch (e.g. "gallons" against a source expecting
-"litres") flags the row to Data Review with "Unrecognized unit for the
-mapped emission source" instead of guessing a conversion — same fallback
-pattern as an unparseable date, both live in the shared `findEntryIssues()`.
-Promoting a Data Review row re-locks the unit to the selected source (same
-as manual entry), which is what resolves a unit-mismatch flag on promote —
-the review form's unit was never a free-typed field to begin with.
+`product-spec.md` had drifted back to the repo root a third time (same
+failure mode as sessions 2 and 3) — moved back to `docs/product-spec.md`.
 
-Facility Reporting Period (`FacilityForm.jsx`, `FacilityTable.jsx`, new):
-its own session table, never merged into Activity Data or its export
-(Hard Rules). Fields: facility, reporting year (dropdown, current year back
-6), facility country (hardcoded `FACILITY_COUNTRIES` list), production
-volume (fixed unit `litres (milk)`), annual revenue (fixed currency `EUR`)
-— all required. No FX conversion, matching spec Section 12's explicit
-out-of-scope.
+App rebuilt around persistence: `src/lib/supabaseClient.js` (client),
+`src/lib/supabaseData.js` (fetch/insert for both tables), `src/lib/
+facilityMatch.js` (single derivation point for the Facility Reporting
+Period auto-detect check, same pattern as `deriveHierarchy`). `App.jsx`
+fetches both tables on mount, reordered to Facility Reporting Period
+(Step 1) above Data Entry (Step 2), and threads a `frpPrefill` state from a
+blocked Activity Data submission down to `FacilityForm`.
 
-Dashboard nav tab (`App.jsx`): header now has a small nav — "Data Entry"
-(current, non-interactive) and "Dashboard ↗" as a real `<a href>` to a
-placeholder `example.com` subdomain, `target="_blank"`. Marked with a code
-comment that it must be swapped once Tool B deploys.
+`EntryForm.jsx`: after computing the raw→converted conversion as before,
+checks for a matching Facility Reporting Period (facility + year from
+`reporting_period`). No match blocks submission, calls back to `App.jsx` to
+pre-fill Step 1 and scroll it into view (verified: scrollY moves from the
+Step 2 form to the Step 1 section). Match found inserts directly into
+Supabase. Added the GDPR checkbox + exact data statement text (spec Section
+7) — blocks submit only when Reviewer is filled in and the box is
+unchecked (verified both the blocked and pass-through paths).
 
-Two independent CSV exports: `EntryTable.jsx` → "Download Activity Data
-CSV" (`purepastures-activity-data.csv`, now includes raw/converted columns
-plus evidence_link/reviewer); `FacilityTable.jsx` → "Download Facility
-Reporting Period CSV" (`purepastures-facility-reporting-period.csv`).
+`FacilityForm.jsx`: accepts the `frpPrefill` values, inserts into Supabase,
+surfaces a friendly message on the new `UNIQUE(facility, reporting_year)`
+constraint violation (Postgres `23505`) rather than a raw DB error.
 
-Verified end-to-end with Playwright against the local dev build (not just
-`npm run build`): manual entry with raw value 150 litres → converted 150
-litres at factor 1.0, evidence_link/reviewer captured; CSV import of a
-3-row file — 1 clean, 1 flagged for a "gallons" vs "litres" unit mismatch,
-1 flagged for an unparseable date, zero guessed conversions; Facility
-Reporting Period entry added to its own table; both CSV downloads
-triggered and their file contents inspected — confirmed separate files with
-correct, distinct columns; page reload cleared both session tables and
-Data Review back to zero. `npm run build` clean (41 modules). No console
-errors during any of the above. A project `verify` skill
-(`.claude/skills/verify/SKILL.md`) was written this session so the next
-build skips this cold start.
+CSV import (`importRows.js`, `CsvImport.jsx`, `DataReview.jsx`):
+`findEntryIssues` gained the same Facility Reporting Period check, flagging
+unmatched rows to Data Review with the spec's exact wording ("No Facility
+Reporting Period on file for this facility and year.") — verified
+alongside the existing unit-mismatch and unparseable-date flags in one
+three-row test file (one flagged for FRP only, one for both unit mismatch
+and FRP, one for date only — confirms the FRP check doesn't double-fire
+when the row is already unusable for other reasons). Clean rows now bulk-
+insert to Supabase; Data Review promote inserts a single row on success.
+CsvImport also gained a GDPR notice + checkbox on the Column Mapping step,
+shown only once the Reviewer column is mapped, gating both "Continue" and
+"Finish import" (verified).
+
+`EntryTable.jsx`/`FacilityTable.jsx`: dropped the "Remove" button entirely
+— there is no update/delete RLS grant anywhere in this build, so a
+client-only remove would misrepresent what's actually persisted. Both now
+read "all records" and pull from state fetched from Supabase; CSV exports
+(spec Section 3/Business Rules) now cover everything ever persisted, with
+Activity Data excluding Data Review rows automatically (they were never
+inserted to begin with).
+
+`toActivityDataRow`/`toFacilityReportingPeriodRow`/`enrichActivityRow`/
+`enrichFacilityRow` (new, `lookups.js`) are the single conversion points
+between the DB's minimal official columns and the richer in-memory shape
+the UI displays — category/subcategory/scope and the fixed production
+unit/currency are never stored, only re-derived at read time.
+
+**Verification note:** this build session's sandbox blocked direct HTTPS
+egress to `*.supabase.co` from the browser/Node (organization egress
+policy — confirmed via the agent-proxy status endpoint, not a bug). Client-
+side logic (all the gating/blocking above, which runs before any network
+call) was verified in a real headless-browser pass. Persistence itself —
+insert, RLS enforcement, the unique constraint — was verified directly
+against the live database via the Supabase MCP connection (which isn't
+subject to the same sandbox restriction) rather than through an actual
+browser round-trip. `npm run build` is clean. **Recommend one live
+browser pass against the deployed Netlify URL** to confirm the full
+insert → reload → still-there loop end-to-end once env vars are set.
 
 ## Last session
-Session 3: fixed the repo layout again (`docs/product-spec.md` restored
-from a second flat re-upload), then built every v4.0 addition — Activity
-Data raw/converted schema split with evidence_link/reviewer, the placeholder
-conversion_factor lookup and its Data Review unit-mismatch fallback, the
-Facility Reporting Period form/table, the placeholder Dashboard nav tab, and
-the two-way CSV export split — and verified the full flow in a real browser
-via Playwright.
+Session 4: promoted both tables to Supabase (new `purepastures` project,
+schema + RLS via MCP, `docs/supabase-setup.md` written), reordered the UI
+to Facility Reporting Period (Step 1) / Data Entry (Step 2), built the
+auto-detect/blocking-validation + inline redirect linking Activity Data to
+Facility Reporting Period (manual entry, CSV import, and Data Review
+promote all share one check), widened both CSV exports to all persisted
+records, and added the GDPR consent framework for the `reviewer` field on
+both entry paths.
 [Rule: 3–5 lines maximum. Replace each session — what was built, changed, or fixed.]
 
 ## Remaining work
-- [ ] Deploy to Netlify — builder confirms the push-triggered build succeeded in the Netlify dashboard (Netlify MCP not active per spec Section 4)
-- [ ] Walk spec Section 13 acceptance criteria 11–12 once the live URL is confirmed (criteria 1–10 verified locally this session)
-- [ ] Log the D3/Supabase promotion deferral (Decision Registry Goal G-2) as its own DECISIONS.md entry — spec Section 1/14 calls for this before the *next* iteration begins, not blocking this one — **superseded, see Known issues**
-- [ ] Confirm Supabase project name "purepastures" with the builder, then create it via Supabase MCP — explicitly not the v1.0 project (v5.0 revision)
-- [ ] Build `activity_data` and `facility_reporting_period` tables and RLS policies via Supabase MCP, then write docs/supabase-setup.md (v5.0 revision)
-- [ ] Reorder the UI: Facility Reporting Period becomes Step 1, Data Entry becomes Step 2 (v5.0 revision)
-- [ ] Build Facility Reporting Period auto-detect/assign logic on Activity Data submission, matched by facility + reporting year (v5.0 revision)
-- [ ] Build the blocking validation + inline redirect to the Facility Reporting Period form when no match exists (v5.0 revision)
-- [ ] Update CSV import's Value Mapping step to flag rows with no matching Facility Reporting Period to Data Review, with the specific reason stated (v5.0 revision)
-- [ ] Update both CSV exports to pull all persisted records ever entered, not session-scoped (v5.0 revision)
-- [ ] Add the GDPR consent checkbox and confirmed data statement to the manual entry form and CSV import flow, covering the `reviewer` field (v5.0 revision)
-- [ ] Local test pass: cross-session persistence (facility data entered in one session matched in a later session), the blocked-entry redirect, and the no-match CSV import flag (v5.0 revision)
-- [ ] Acceptance criteria pass — verify spec Section 13 criteria 1–16 before deploy (v5.0 revision)
-- [ ] Deploy v5.0 changes to Netlify — builder confirms the push-triggered build succeeded in the dashboard (v5.0 revision)
+- [ ] Add `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in the Netlify dashboard (Netlify MCP not active, spec Section 4) — values are in `.env.example`'s companion `.env.local` (gitignored, not committed)
+- [ ] Confirm the push-triggered Netlify build succeeds (builder checks dashboard)
+- [ ] One live browser pass against the deployed URL: submit a Facility Reporting Period entry, reload, confirm it's still there; submit a matching Activity Data entry; confirm both CSV exports download all persisted records
+- [ ] Walk spec Section 13 acceptance criteria 14–16 (deploy-dependent) once the live URL is confirmed — criteria 1–13 verified this session (12 via direct SQL role-switching against live RLS, not the Supabase dashboard UI)
+- [ ] Decide whether to clean up the two unrelated pre-existing Supabase projects found in the org this session (`purepastures-ghg`, `acarras-1403's Project`) — left untouched, not part of this build (D-14 limitation)
 [Rule: completed items leave this list and are absorbed into Current state. This list only shrinks.]
 
 ## Build decisions
-- Column Mapping's schema-field list keeps the `purchase_date` gap-fill
-  from v3.0 (spec Section 8 doesn't name it explicitly, but Section 9's
-  reporting-period derivation still requires a mapped date column).
-- `activity_data_unit_raw` is checked directly against the source's
-  expected unit (`unitMatchesSource`), not run through Value Mapping —
-  Section 9 describes a pass/fail check against "the expected unit for the
-  mapped source," not a value the uploader picks from a list, so it doesn't
-  belong in `collectUnresolvedValues`'s categorical-field flow.
-- Facility country list, production unit, and currency are new hardcoded
-  lookups in `lookups.js` (`FACILITY_COUNTRIES`, `PRODUCTION_UNIT`,
-  `CURRENCY`) — spec Section 5 specifies the field shapes but not concrete
-  values; picked a small plausible country list and single-currency EUR
-  given Section 12 explicitly excludes multi-currency FX.
-- Dashboard placeholder URL uses the reserved `example.com` domain rather
-  than a real-looking address, so it's unambiguous that it's a stand-in
-  pending Tool B.
-- `CONVERSION_FACTORS`' `base_unit` is set equal to each source's existing
-  `unit` field rather than a new value — with every factor at placeholder
-  1.0 there's no real base unit yet to differ from the display unit.
+- `category`/`subcategory`/`scope` and Facility Reporting Period's
+  `production_unit`/`currency` are not persisted columns — CLAUDE.md's
+  authoritative schema lists neither, so they stay purely client-derived
+  from `emission_source`/`facility` (via the existing `deriveHierarchy` and
+  the fixed `PRODUCTION_UNIT`/`CURRENCY` constants) at read time, avoiding
+  schema drift from the documented source of truth.
+- Added a database-level `UNIQUE(facility, reporting_year)` constraint on
+  `facility_reporting_period` — spec Section 5 names this as the table's
+  "key fields ... unique together"; enforcing it in Postgres (not just
+  app logic) closes the same class of gap D-2/D-13 already flagged for
+  other application-logic-only validations in this project's history.
+- Dropped the "Remove" button from both `EntryTable` and `FacilityTable` —
+  neither table's RLS policy grants update or delete, so a client-only
+  remove (leaving the row in Supabase) would visually lie about what's
+  actually persisted. Not called for explicitly in spec Section 8, but
+  follows directly from the Hard Rule already in place.
+- New Supabase project created fresh (`purepastures`, eu-central-1) rather
+  than reusing either pre-existing project already present in the org —
+  confirmed with the builder this session given neither existing project
+  was named `purepastures` and one is likely the prohibited v1.0 project.
+- GDPR consent checkbox blocks submission only when `reviewer` actually has
+  a value (manual form) or the Reviewer column is actually mapped (CSV
+  import) — consent is moot, and the checkbox non-blocking, when no name
+  is being collected at all.
 [Rule: one line per decision made during the build that is not in the spec — prompt structures, field formats, naming choices, library picks. Future sessions depend on these to stay consistent.]
 
 ## Known issues
-- product-spec.md has now been re-uploaded flat to the repo root twice
-  (sessions 2 and 3), overwriting the `docs/` structure both times. Worth
-  flagging to the builder as a recurring upload habit to break, not a
-  one-off.
-- Spec revised to v5.0 on 2026-07-16 — CLAUDE.md regenerated by Project
-  Governor. This reverses D-9's D2 deferral (see DECISIONS.md D-11) —
-  the "Remaining work" item above about logging the D3 deferral as its
-  own DECISIONS.md entry is now superseded by D-11 through D-15, which
-  the builder has already drafted; it should be removed once integrated,
-  not acted on as originally worded.
+- This build session's sandbox blocked outbound HTTPS to `*.supabase.co`
+  directly from the browser/Node (org egress policy, confirmed via the
+  agent-proxy status endpoint — not a code defect). Full live-browser
+  persistence testing (the actual insert → reload → still-there loop
+  through the deployed app) has not been done yet — only DB-layer
+  verification via the Supabase MCP connection and browser verification of
+  the pre-network client-side logic. See "Remaining work."
+- Two Supabase projects unrelated to this build already existed in the org
+  before this session (`purepastures-ghg`, `acarras-1403's Project`, both
+  dated 2026-07-04) — neither was touched; cleanup is a builder decision,
+  not made here (D-14).
 [Rule: bugs, edge cases, and deferred fixes. One line each. Remove when resolved.]
 
 ## Notes for next session

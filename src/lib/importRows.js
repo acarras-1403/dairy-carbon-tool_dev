@@ -12,6 +12,7 @@ import {
   unitMatchesSource,
 } from '../data/lookups.js'
 import { parseFlexibleDate, periodFromParsedDate } from './periods.js'
+import { findFacilityMatch } from './facilityMatch.js'
 
 export const MAPPABLE_FIELDS = [
   { key: 'facility', label: 'Facility' },
@@ -75,7 +76,10 @@ function resolveValue(field, raw, valueMap) {
 // mapped source flags the row here too, same fallback pattern as an
 // unparseable date (spec Section 9, v4.0) — manual/promoted entries always
 // carry the auto-filled, locked unit so this never fires for them.
-export function findEntryIssues(entry) {
+// `facilityPeriods` (v5.0) adds the Facility Reporting Period auto-detect
+// check — a row with no matching facility+year record flags here too,
+// rather than importing unmatched (spec Section 9).
+export function findEntryIssues(entry, facilityPeriods) {
   const issues = []
   if (!entry.reporting_period) issues.push('Reporting period missing or unparseable')
   if (!entry.facility_id) issues.push('Facility missing or unmapped')
@@ -92,6 +96,13 @@ export function findEntryIssues(entry) {
     issues.push('Unrecognized unit for the mapped emission source')
   }
   if (!entry.data_quality_rating) issues.push('Data quality rating missing or unmapped')
+  if (
+    entry.reporting_period &&
+    entry.facility_id &&
+    !findFacilityMatch(facilityPeriods ?? [], entry.facility_id, entry.reporting_period)
+  ) {
+    issues.push('No Facility Reporting Period on file for this facility and year.')
+  }
   return issues
 }
 
@@ -151,9 +162,11 @@ export function buildEntryFromCsvRow(row, columnMap, valueMap, noteColumns) {
   }
 }
 
-// Splits imported rows into clean (ready for the main table) and flagged
-// (Data Review).
-export function processImportRows(rows, headers, columnMap, valueMap) {
+// Splits imported rows into clean (ready to persist) and flagged (Data
+// Review). Clean rows carry facility_reporting_period_ref, auto-assigned
+// from the matched row (spec Section 9, v5.0) — resolvable here since a
+// clean row is guaranteed a match by findEntryIssues above.
+export function processImportRows(rows, headers, columnMap, valueMap, facilityPeriods) {
   const mappedColumns = new Set(Object.values(columnMap).filter(Boolean))
   const noteColumns = headers.filter((h) => !mappedColumns.has(h))
 
@@ -162,11 +175,12 @@ export function processImportRows(rows, headers, columnMap, valueMap) {
 
   for (const row of rows) {
     const entry = buildEntryFromCsvRow(row, columnMap, valueMap, noteColumns)
-    const issues = findEntryIssues(entry)
+    const issues = findEntryIssues(entry, facilityPeriods)
     if (issues.length > 0) {
       flagged.push({ ...entry, issues })
     } else {
-      clean.push(entry)
+      const match = findFacilityMatch(facilityPeriods ?? [], entry.facility_id, entry.reporting_period)
+      clean.push({ ...entry, facility_reporting_period_ref: match?.id })
     }
   }
 

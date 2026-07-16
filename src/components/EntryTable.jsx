@@ -16,7 +16,10 @@ const COLUMNS = [
   { key: 'notes', label: 'Notes' },
 ]
 
-export default function EntryTable({ entries, onRemove }) {
+// Reflects every persisted Activity Data record (spec v5.0 — no longer
+// session-scoped); no edit/delete anywhere here, matching the RLS policies
+// (insert-only, no update/delete grant).
+export default function EntryTable({ entries }) {
   function handleDownload() {
     downloadCsv('purepastures-activity-data.csv', toCsv(COLUMNS, entries))
   }
@@ -25,7 +28,7 @@ export default function EntryTable({ entries, onRemove }) {
     <section className="card space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-deepblue">
-          Activity data — session entries ({entries.length})
+          Activity data — all records ({entries.length})
         </h2>
         <button className="btn-accent" disabled={!entries.length} onClick={handleDownload}>
           Download Activity Data CSV
@@ -33,10 +36,7 @@ export default function EntryTable({ entries, onRemove }) {
       </div>
 
       {entries.length === 0 ? (
-        <p className="text-sm text-slate">
-          No entries yet this session. Add one above — entries are not saved
-          anywhere and disappear if you refresh or close this tab.
-        </p>
+        <p className="text-sm text-slate">No activity data entries yet.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse text-sm">
@@ -54,7 +54,6 @@ export default function EntryTable({ entries, onRemove }) {
                 <th className="py-2 pr-3">Evidence link</th>
                 <th className="py-2 pr-3">Reviewer</th>
                 <th className="py-2 pr-3">Notes</th>
-                <th className="py-2 pr-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -80,11 +79,6 @@ export default function EntryTable({ entries, onRemove }) {
                   </td>
                   <td className="py-2 pr-3">{row.reviewer}</td>
                   <td className="py-2 pr-3 max-w-xs text-slate">{row.notes}</td>
-                  <td className="py-2 pr-3">
-                    <button className="btn-ghost px-2 py-1" onClick={() => onRemove(row.id)}>
-                      Remove
-                    </button>
-                  </td>
                 </tr>
               ))}
             </tbody>

@@ -7,10 +7,13 @@ import {
   DATA_QUALITY_OPTIONS,
   deriveHierarchy,
   convertActivityValue,
+  toActivityDataRow,
 } from '../data/lookups.js'
 import { findEntryIssues } from '../lib/importRows.js'
+import { findFacilityMatch } from '../lib/facilityMatch.js'
+import { insertActivityData } from '../lib/supabaseData.js'
 
-function ReviewRow({ row, onPromote, onDiscard }) {
+function ReviewRow({ row, facilityPeriods, onPromote, onDiscard }) {
   const [form, setForm] = useState({
     reporting_period: row.reporting_period,
     facility_id: row.facility_id,
@@ -24,6 +27,7 @@ function ReviewRow({ row, onPromote, onDiscard }) {
     reviewer: row.reviewer ?? '',
   })
   const [promoteError, setPromoteError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const subcategories = useMemo(
     () => SUBCATEGORIES.filter((s) => s.categoryId === form.category_id),
@@ -53,7 +57,7 @@ function ReviewRow({ row, onPromote, onDiscard }) {
     setPromoteError('')
   }
 
-  function handlePromote() {
+  async function handlePromote() {
     const value =
       form.activity_data_value_raw === '' ? '' : Number(form.activity_data_value_raw)
     const conversion =
@@ -61,14 +65,7 @@ function ReviewRow({ row, onPromote, onDiscard }) {
     const candidate = {
       reporting_period: form.reporting_period,
       facility_id: form.facility_id,
-      facility_name: FACILITIES.find((f) => f.id === form.facility_id)?.name ?? '',
-      scope_id: hierarchy?.scope_id ?? '',
-      category_id: form.category_id,
-      category_name: hierarchy?.category_name ?? '',
-      subcategory_id: form.subcategory_id || null,
-      subcategory_name: hierarchy?.subcategory_name ?? '',
       source_id: form.source_id,
-      source_name: hierarchy?.source_name ?? '',
       activity_data_value_raw: Number.isNaN(value) ? '' : value,
       activity_data_unit_raw: hierarchy?.unit ?? '',
       activity_data_value_converted: conversion?.value_converted ?? '',
@@ -78,12 +75,23 @@ function ReviewRow({ row, onPromote, onDiscard }) {
       evidence_link: form.evidence_link,
       reviewer: form.reviewer,
     }
-    const issues = findEntryIssues(candidate)
+    const issues = findEntryIssues(candidate, facilityPeriods)
     if (issues.length > 0) {
       setPromoteError(issues.join('; '))
       return
     }
-    onPromote(row.id, { id: row.id, ...candidate })
+    const match = findFacilityMatch(facilityPeriods, candidate.facility_id, candidate.reporting_period)
+    candidate.facility_reporting_period_ref = match.id
+
+    setSubmitting(true)
+    try {
+      const inserted = await insertActivityData(toActivityDataRow(candidate))
+      onPromote(row.id, inserted)
+    } catch {
+      setPromoteError('Could not save this entry to the database. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -228,17 +236,17 @@ function ReviewRow({ row, onPromote, onDiscard }) {
         <button className="btn-ghost" onClick={() => onDiscard(row.id)}>
           Discard
         </button>
-        <button className="btn-primary" onClick={handlePromote}>
-          Promote to session table
+        <button className="btn-primary" onClick={handlePromote} disabled={submitting}>
+          {submitting ? 'Saving…' : 'Promote to database'}
         </button>
       </div>
     </div>
   )
 }
 
-// Holds only flagged rows from CSV import (spec Section 8) — fix and
-// promote to the main table, or discard.
-export default function DataReview({ rows, onPromote, onDiscard }) {
+// Holds only flagged rows from CSV import (spec Section 8) — never written
+// to Supabase until promoted. Fix and promote (persists), or discard.
+export default function DataReview({ rows, facilityPeriods, onPromote, onDiscard }) {
   if (rows.length === 0) return null
 
   return (
@@ -247,12 +255,19 @@ export default function DataReview({ rows, onPromote, onDiscard }) {
         Data Review — needs attention ({rows.length})
       </h2>
       <p className="text-sm text-slate">
-        These rows had an unparseable date or a required field still blank after
+        These rows had an unparseable date, a required field still blank, an
+        unrecognized unit, or no matching Facility Reporting Period after
         import mapping. Fix and promote them, or discard.
       </p>
       <div className="space-y-3">
         {rows.map((row) => (
-          <ReviewRow key={row.id} row={row} onPromote={onPromote} onDiscard={onDiscard} />
+          <ReviewRow
+            key={row.id}
+            row={row}
+            facilityPeriods={facilityPeriods}
+            onPromote={onPromote}
+            onDiscard={onDiscard}
+          />
         ))}
       </div>
     </section>
