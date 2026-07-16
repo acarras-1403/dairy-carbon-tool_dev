@@ -54,6 +54,14 @@ export function periodFromParsedDate({ year, month }) {
   return `${year}-${String(month).padStart(2, '0')}`
 }
 
+// Extracts the year out of a 'YYYY-MM' reporting period, for matching
+// against Facility Reporting Period rows (spec Section 9, v5.0). Returns
+// null if the period isn't in the expected shape.
+export function yearFromPeriod(period) {
+  const m = String(period ?? '').match(/^(\d{4})-\d{2}$/)
+  return m ? Number(m[1]) : null
+}
+
 // Facility Reporting Period is a plain calendar year (spec Section 5, v4.0).
 export function currentYear(now = new Date()) {
   return now.getUTCFullYear()

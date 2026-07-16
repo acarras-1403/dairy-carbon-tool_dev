@@ -7,8 +7,11 @@ import {
   DATA_QUALITY_OPTIONS,
   deriveHierarchy,
   convertActivityValue,
+  toActivityDataRow,
 } from '../data/lookups.js'
-import { recentPeriods, currentPeriod } from '../lib/periods.js'
+import { recentPeriods, currentPeriod, yearFromPeriod } from '../lib/periods.js'
+import { findFacilityMatch } from '../lib/facilityMatch.js'
+import { insertActivityData } from '../lib/supabaseData.js'
 
 const blank = {
   reporting_period: currentPeriod(),
@@ -21,12 +24,20 @@ const blank = {
   notes: '',
   evidence_link: '',
   reviewer: '',
+  consent: false,
 }
 
-// Every field required except Notes (spec Section 8 / Business Rules).
-export default function EntryForm({ onAdd }) {
+const GDPR_STATEMENT =
+  'Your data will be stored securely and used only to track who logged each activity entry for internal accountability purposes. You can request deletion of your name at any time by contacting sustainability@purepastures.com.'
+
+// Every field required except Notes, Evidence link, Reviewer (spec Section
+// 8 / Business Rules). Step 2 of 2 (spec v5.0) — blocked from submitting
+// without a matching Facility Reporting Period for facility + reporting
+// year; blocked entries are redirected inline to Step 1 (App.jsx) instead.
+export default function EntryForm({ facilityPeriods, onAdd, onBlocked }) {
   const [form, setForm] = useState(blank)
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const periods = useMemo(() => recentPeriods(12), [])
 
@@ -61,7 +72,7 @@ export default function EntryForm({ onAdd }) {
     })
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     setError('')
 
@@ -81,20 +92,29 @@ export default function EntryForm({ onAdd }) {
       setError('Activity value must be a number.')
       return
     }
+    if (form.reviewer.trim() && !form.consent) {
+      setError('Please confirm the data statement below to submit a reviewer name.')
+      return
+    }
+
+    const match = findFacilityMatch(facilityPeriods, form.facility_id, form.reporting_period)
+    if (!match) {
+      onBlocked({
+        facility_id: form.facility_id,
+        reporting_year: yearFromPeriod(form.reporting_period),
+      })
+      setError(
+        'No Facility Reporting Period on file for this facility and year. Add it in Step 1 above, then resubmit this entry.',
+      )
+      return
+    }
+
     const conversion = convertActivityValue(form.source_id, value)
 
-    onAdd({
-      id: crypto.randomUUID(),
+    const candidate = {
       reporting_period: form.reporting_period,
       facility_id: form.facility_id,
-      facility_name: FACILITIES.find((f) => f.id === form.facility_id)?.name ?? form.facility_id,
-      scope_id: hierarchy?.scope_id ?? '',
-      category_id: form.category_id,
-      category_name: hierarchy?.category_name ?? CATEGORIES.find((c) => c.id === form.category_id)?.name ?? form.category_id,
-      subcategory_id: form.subcategory_id || null,
-      subcategory_name: hierarchy?.subcategory_name ?? '',
       source_id: form.source_id,
-      source_name: selectedSource?.name ?? form.source_id,
       activity_data_value_raw: value,
       activity_data_unit_raw: selectedSource?.unit ?? '',
       activity_data_value_converted: conversion?.value_converted ?? '',
@@ -103,8 +123,19 @@ export default function EntryForm({ onAdd }) {
       notes: form.notes || '',
       evidence_link: form.evidence_link || '',
       reviewer: form.reviewer || '',
-    })
-    setForm(blank)
+      facility_reporting_period_ref: match.id,
+    }
+
+    setSubmitting(true)
+    try {
+      const inserted = await insertActivityData(toActivityDataRow(candidate))
+      onAdd(inserted)
+      setForm(blank)
+    } catch {
+      setError('Could not save this entry to the database. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -264,11 +295,25 @@ export default function EntryForm({ onAdd }) {
         </div>
       </div>
 
+      <div className="rounded-md border border-line bg-deepblue/5 p-3">
+        <label className="flex items-start gap-2 text-sm text-ink">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={form.consent}
+            onChange={(e) => set('consent', e.target.checked)}
+          />
+          <span>
+            {GDPR_STATEMENT} Required only if you enter a Reviewer name above.
+          </span>
+        </label>
+      </div>
+
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="flex justify-end">
-        <button type="submit" className="btn-primary">
-          Add entry
+        <button type="submit" className="btn-primary" disabled={submitting}>
+          {submitting ? 'Saving…' : 'Add entry'}
         </button>
       </div>
     </form>

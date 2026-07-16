@@ -10,9 +10,10 @@ const COLUMNS = [
   { key: 'currency', label: 'Currency' },
 ]
 
-// Own export — kept separate from Activity Data's, since the two are
-// different grains of data (spec Section 3, Hard Rules).
-export default function FacilityTable({ entries, onRemove }) {
+// Reflects every persisted Facility Reporting Period record (spec v5.0 —
+// no longer session-scoped); no edit/delete anywhere here, matching the RLS
+// policies (insert-only, no update/delete grant).
+export default function FacilityTable({ entries }) {
   function handleDownload() {
     downloadCsv('purepastures-facility-reporting-period.csv', toCsv(COLUMNS, entries))
   }
@@ -21,7 +22,7 @@ export default function FacilityTable({ entries, onRemove }) {
     <section className="card space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-deepblue">
-          Facility reporting period — session entries ({entries.length})
+          Facility reporting period — all records ({entries.length})
         </h2>
         <button className="btn-accent" disabled={!entries.length} onClick={handleDownload}>
           Download Facility Reporting Period CSV
@@ -29,11 +30,7 @@ export default function FacilityTable({ entries, onRemove }) {
       </div>
 
       {entries.length === 0 ? (
-        <p className="text-sm text-slate">
-          No facility reporting period entries yet this session. Add one
-          above — entries are not saved anywhere and disappear if you refresh
-          or close this tab.
-        </p>
+        <p className="text-sm text-slate">No facility reporting period entries yet.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse text-sm">
@@ -44,7 +41,6 @@ export default function FacilityTable({ entries, onRemove }) {
                 <th className="py-2 pr-3">Country</th>
                 <th className="py-2 pr-3 text-right">Production</th>
                 <th className="py-2 pr-3 text-right">Revenue</th>
-                <th className="py-2 pr-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -58,11 +54,6 @@ export default function FacilityTable({ entries, onRemove }) {
                   </td>
                   <td className="py-2 pr-3 text-right whitespace-nowrap">
                     {Number(row.annual_revenue).toLocaleString()} {row.currency}
-                  </td>
-                  <td className="py-2 pr-3">
-                    <button className="btn-ghost px-2 py-1" onClick={() => onRemove(row.id)}>
-                      Remove
-                    </button>
                   </td>
                 </tr>
               ))}

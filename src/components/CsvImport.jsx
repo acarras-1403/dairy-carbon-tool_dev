@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import { parseCsv } from '../lib/csv.js'
-import { FACILITIES, SOURCES, DATA_QUALITY_OPTIONS } from '../data/lookups.js'
+import { FACILITIES, SOURCES, DATA_QUALITY_OPTIONS, toActivityDataRow } from '../data/lookups.js'
 import {
   MAPPABLE_FIELDS,
   collectUnresolvedValues,
   processImportRows,
 } from '../lib/importRows.js'
+import { insertActivityDataRows } from '../lib/supabaseData.js'
+
+const GDPR_STATEMENT =
+  'Your data will be stored securely and used only to track who logged each activity entry for internal accountability purposes. You can request deletion of your name at any time by contacting sustainability@purepastures.com.'
 
 function optionsForField(field) {
   if (field === 'facility') return FACILITIES.map((f) => ({ value: f.id, label: f.name }))
@@ -17,8 +21,10 @@ function optionsForField(field) {
 
 // Column Mapping → Value Mapping → Data Review sorting, in one wizard
 // (spec Section 8). Each upload starts from scratch — nothing about a
-// mapping is remembered across files (Hard Rules).
-export default function CsvImport({ onImportComplete }) {
+// mapping is remembered across files (Hard Rules). Clean rows persist to
+// Supabase (spec v5.0); flagged rows go to Data Review and are never
+// written to the database.
+export default function CsvImport({ facilityPeriods, onImportComplete }) {
   const [step, setStep] = useState('upload')
   const [fileName, setFileName] = useState('')
   const [error, setError] = useState('')
@@ -28,6 +34,9 @@ export default function CsvImport({ onImportComplete }) {
   const [unresolved, setUnresolved] = useState([])
   const [valueChoices, setValueChoices] = useState({})
   const [summary, setSummary] = useState(null)
+  const [consent, setConsent] = useState(false)
+
+  const reviewerMapped = Boolean(columnMap.reviewer)
 
   function reset() {
     setStep('upload')
@@ -39,6 +48,7 @@ export default function CsvImport({ onImportComplete }) {
     setUnresolved([])
     setValueChoices({})
     setSummary(null)
+    setConsent(false)
   }
 
   function handleFile(e) {
@@ -82,6 +92,11 @@ export default function CsvImport({ onImportComplete }) {
   }
 
   function proceedFromColumnMapping() {
+    if (reviewerMapped && !consent) {
+      setError('Please confirm the data statement below — the Reviewer column is mapped.')
+      return
+    }
+    setError('')
     const found = collectUnresolvedValues(rows, columnMap)
     setUnresolved(found)
     setValueChoices({})
@@ -99,10 +114,25 @@ export default function CsvImport({ onImportComplete }) {
     }))
   }
 
-  function finishImport(finalColumnMap, finalValueMap) {
-    const { clean, flagged } = processImportRows(rows, headers, finalColumnMap, finalValueMap)
+  async function finishImport(finalColumnMap, finalValueMap) {
+    const { clean, flagged } = processImportRows(
+      rows,
+      headers,
+      finalColumnMap,
+      finalValueMap,
+      facilityPeriods,
+    )
 
-    onImportComplete(clean, flagged)
+    let inserted = []
+    try {
+      inserted = await insertActivityDataRows(clean.map(toActivityDataRow))
+    } catch {
+      setError('Could not save imported rows to the database. Please try again.')
+      setStep('columnMapping')
+      return
+    }
+
+    onImportComplete(inserted, flagged)
     setSummary({
       total: rows.length,
       clean: clean.length,
@@ -112,6 +142,11 @@ export default function CsvImport({ onImportComplete }) {
   }
 
   function submitValueMapping() {
+    if (reviewerMapped && !consent) {
+      setError('Please confirm the data statement below — the Reviewer column is mapped.')
+      return
+    }
+    setError('')
     setStep('processing')
     finishImport(columnMap, valueChoices)
   }
@@ -174,6 +209,22 @@ export default function CsvImport({ onImportComplete }) {
               )
             })}
           </div>
+          {reviewerMapped && (
+            <div className="rounded-md border border-line bg-deepblue/5 p-3">
+              <label className="flex items-start gap-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={consent}
+                  onChange={(e) => setConsent(e.target.checked)}
+                />
+                <span>
+                  The Reviewer column is mapped — it contains a self-reported
+                  name (personal data). {GDPR_STATEMENT}
+                </span>
+              </label>
+            </div>
+          )}
           <div className="flex justify-end gap-2">
             <button className="btn-ghost" onClick={reset}>
               Cancel
@@ -231,8 +282,8 @@ export default function CsvImport({ onImportComplete }) {
           <p className="text-sm text-ink">
             Imported <span className="font-semibold">{summary.total}</span> row
             {summary.total === 1 ? '' : 's'} from <span className="font-medium">{fileName}</span>:{' '}
-            <span className="font-semibold text-deepblue">{summary.clean}</span> added to the
-            session table, <span className="font-semibold text-deepblue">{summary.flagged}</span>{' '}
+            <span className="font-semibold text-deepblue">{summary.clean}</span> saved to the
+            database, <span className="font-semibold text-deepblue">{summary.flagged}</span>{' '}
             sent to Data Review.
           </p>
           <button className="btn-ghost" onClick={reset}>

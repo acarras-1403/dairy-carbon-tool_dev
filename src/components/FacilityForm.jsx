@@ -1,6 +1,13 @@
-import { useMemo, useState } from 'react'
-import { FACILITIES, FACILITY_COUNTRIES, PRODUCTION_UNIT, CURRENCY } from '../data/lookups.js'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  FACILITIES,
+  FACILITY_COUNTRIES,
+  PRODUCTION_UNIT,
+  CURRENCY,
+  toFacilityReportingPeriodRow,
+} from '../data/lookups.js'
 import { recentYears, currentYear } from '../lib/periods.js'
+import { insertFacilityReportingPeriod } from '../lib/supabaseData.js'
 
 const blank = {
   facility_id: '',
@@ -10,20 +17,31 @@ const blank = {
   annual_revenue: '',
 }
 
-// Facility Reporting Period — separate session table from Activity Data,
-// one row per facility per reporting year (spec Section 5, Hard Rules).
-// Every field is required (Business Rules).
-export default function FacilityForm({ onAdd }) {
+// Facility Reporting Period — Step 1 (spec v5.0), persisted in Supabase, one
+// row per facility per reporting year (unique constraint at the database).
+// Every field is required (Business Rules). Pre-filled when arriving here
+// via a blocked Activity Data entry's inline redirect (App.jsx).
+export default function FacilityForm({ prefill, onAdd }) {
   const [form, setForm] = useState(blank)
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const years = useMemo(() => recentYears(6), [])
+
+  useEffect(() => {
+    if (!prefill) return
+    setForm((f) => ({
+      ...f,
+      facility_id: prefill.facility_id || f.facility_id,
+      reporting_year: prefill.reporting_year ?? f.reporting_year,
+    }))
+  }, [prefill])
 
   function set(field, value) {
     setForm((f) => ({ ...f, [field]: value }))
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     setError('')
 
@@ -44,23 +62,40 @@ export default function FacilityForm({ onAdd }) {
       return
     }
 
-    onAdd({
-      id: crypto.randomUUID(),
+    const candidate = {
       facility_id: form.facility_id,
-      facility_name: FACILITIES.find((f) => f.id === form.facility_id)?.name ?? form.facility_id,
       reporting_year: Number(form.reporting_year),
       facility_country: form.facility_country,
       production_volume: production,
-      production_unit: PRODUCTION_UNIT,
       annual_revenue: revenue,
-      currency: CURRENCY,
-    })
-    setForm(blank)
+    }
+
+    setSubmitting(true)
+    try {
+      const inserted = await insertFacilityReportingPeriod(toFacilityReportingPeriodRow(candidate))
+      onAdd(inserted)
+      setForm(blank)
+    } catch (err) {
+      setError(
+        err?.code === '23505'
+          ? 'A Facility Reporting Period already exists for this facility and year.'
+          : 'Could not save this entry to the database. Please try again.',
+      )
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} className="card space-y-4">
       <h2 className="text-lg font-semibold text-deepblue">Log facility reporting period</h2>
+      {prefill && (
+        <p className="rounded-md bg-lime/20 px-3 py-2 text-sm text-deepblue">
+          No Facility Reporting Period was on file for the facility and year
+          on your Step 2 entry — fields below are pre-filled. Submit this
+          first, then resubmit your activity data entry.
+        </p>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
@@ -150,8 +185,8 @@ export default function FacilityForm({ onAdd }) {
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="flex justify-end">
-        <button type="submit" className="btn-primary">
-          Add entry
+        <button type="submit" className="btn-primary" disabled={submitting}>
+          {submitting ? 'Saving…' : 'Add entry'}
         </button>
       </div>
     </form>

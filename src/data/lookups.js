@@ -144,6 +144,67 @@ export function deriveHierarchy(sourceId) {
   }
 }
 
+// Shapes an in-memory entry (however it was built — manual, CSV import, or
+// Data Review promote) down to exactly the activity_data table's columns
+// (docs/supabase-setup.md) — category/subcategory/scope are never persisted.
+export function toActivityDataRow(entry) {
+  return {
+    reporting_period: entry.reporting_period,
+    facility: entry.facility_id,
+    emission_source: entry.source_id,
+    activity_data_value_raw: entry.activity_data_value_raw,
+    activity_data_unit_raw: entry.activity_data_unit_raw,
+    activity_data_value_converted: entry.activity_data_value_converted,
+    activity_data_unit_converted: entry.activity_data_unit_converted,
+    data_quality_rating: entry.data_quality_rating,
+    notes: entry.notes || null,
+    evidence_link: entry.evidence_link || null,
+    reviewer: entry.reviewer || null,
+    facility_reporting_period_ref: entry.facility_reporting_period_ref,
+  }
+}
+
+// Shapes a Facility Reporting Period form entry down to exactly the
+// facility_reporting_period table's columns.
+export function toFacilityReportingPeriodRow(entry) {
+  return {
+    facility: entry.facility_id,
+    reporting_year: entry.reporting_year,
+    facility_country: entry.facility_country,
+    production_volume: entry.production_volume,
+    annual_revenue: entry.annual_revenue,
+  }
+}
+
+// Re-attaches display-only fields (facility name, category/subcategory/
+// scope/source names — never stored, see toActivityDataRow) to a raw
+// activity_data row fetched from Supabase, so the table/export can show the
+// same rich columns as before the D3 promotion.
+export function enrichActivityRow(row) {
+  const hierarchy = deriveHierarchy(row.emission_source)
+  return {
+    ...row,
+    facility_id: row.facility,
+    facility_name: FACILITIES.find((f) => f.id === row.facility)?.name ?? row.facility,
+    source_id: row.emission_source,
+    category_name: hierarchy?.category_name ?? '',
+    subcategory_name: hierarchy?.subcategory_name ?? '',
+    source_name: hierarchy?.source_name ?? row.emission_source,
+  }
+}
+
+// Re-attaches the facility name and the fixed production unit/currency
+// constants to a raw facility_reporting_period row fetched from Supabase.
+export function enrichFacilityRow(row) {
+  return {
+    ...row,
+    facility_id: row.facility,
+    facility_name: FACILITIES.find((f) => f.id === row.facility)?.name ?? row.facility,
+    production_unit: PRODUCTION_UNIT,
+    currency: CURRENCY,
+  }
+}
+
 // Case-insensitive, trimmed exact match against a lookup list's `name` (or
 // `id`) — used to auto-resolve CSV raw values that already match a
 // hardcoded option, so Value Mapping only shows genuinely unmapped values.
