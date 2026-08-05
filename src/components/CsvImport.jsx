@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { parseCsv } from '../lib/csv.js'
+import { parseCsv, templateCsv, downloadCsv } from '../lib/csv.js'
 import { FACILITIES, SOURCES, DATA_QUALITY_OPTIONS, toActivityDataRow } from '../data/lookups.js'
 import {
   MAPPABLE_FIELDS,
@@ -49,6 +49,10 @@ export default function CsvImport({ facilityPeriods, onImportComplete }) {
     setValueChoices({})
     setSummary(null)
     setConsent(false)
+  }
+
+  function handleDownloadTemplate() {
+    downloadCsv('purepastures-activity-data-template.csv', templateCsv())
   }
 
   function handleFile(e) {
@@ -154,24 +158,29 @@ export default function CsvImport({ facilityPeriods, onImportComplete }) {
   return (
     <section className="card space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-deepblue">Bulk CSV import</h2>
+        <h2 className="text-lg font-semibold text-accent">Bulk CSV import</h2>
         <p className="text-sm text-slate">
           Upload raw records, map columns and values, and flagged rows land in
           Data Review below.
         </p>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {step === 'upload' && (
-        <div>
-          <label className="label">CSV file</label>
-          <input
-            type="file"
-            accept=".csv,text/csv"
-            onChange={handleFile}
-            className="block w-full text-sm text-ink file:mr-3 file:rounded-md file:border-0 file:bg-deepblue file:px-3 file:py-2 file:text-sm file:font-semibold file:text-offwhite hover:file:bg-deepblue/90"
-          />
+        <div className="space-y-3">
+          <div>
+            <label className="label">CSV file</label>
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              onChange={handleFile}
+              className="block w-full text-sm text-ink file:mr-3 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-2 file:text-sm file:font-semibold file:text-accentContrast hover:file:opacity-90"
+            />
+          </div>
+          <button type="button" className="text-sm font-medium text-accent underline underline-offset-2" onClick={handleDownloadTemplate}>
+            Download template (.csv)
+          </button>
         </div>
       )}
 
@@ -210,7 +219,7 @@ export default function CsvImport({ facilityPeriods, onImportComplete }) {
             })}
           </div>
           {reviewerMapped && (
-            <div className="rounded-md border border-line bg-deepblue/5 p-3">
+            <div className="rounded-md border border-line bg-accent/5 p-3">
               <label className="flex items-start gap-2 text-sm text-ink">
                 <input
                   type="checkbox"
@@ -282,8 +291,8 @@ export default function CsvImport({ facilityPeriods, onImportComplete }) {
           <p className="text-sm text-ink">
             Imported <span className="font-semibold">{summary.total}</span> row
             {summary.total === 1 ? '' : 's'} from <span className="font-medium">{fileName}</span>:{' '}
-            <span className="font-semibold text-deepblue">{summary.clean}</span> saved to the
-            database, <span className="font-semibold text-deepblue">{summary.flagged}</span>{' '}
+            <span className="font-semibold text-accent">{summary.clean}</span> saved to the
+            database, <span className="font-semibold text-accent">{summary.flagged}</span>{' '}
             sent to Data Review.
           </p>
           <button className="btn-ghost" onClick={reset}>

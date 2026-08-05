@@ -95,16 +95,6 @@ export function convertActivityValue(sourceId, rawValue) {
   }
 }
 
-// Checks a raw unit (e.g. from a mapped CSV column) against the expected
-// unit for a source — case-insensitive, trimmed, same tolerance as
-// findExactMatch. Manual entry's unit is always auto-filled/locked so this
-// only meaningfully rejects mismatched CSV rows (spec Section 9).
-export function unitMatchesSource(sourceId, rawUnit) {
-  const source = SOURCES.find((s) => s.id === sourceId)
-  if (!source) return false
-  return String(rawUnit ?? '').trim().toLowerCase() === source.unit.trim().toLowerCase()
-}
-
 // Facility Reporting Period lookups (new, v4.0). Production volume and
 // annual revenue use one fixed unit/currency each — no multi-currency FX,
 // no per-facility unit variation (spec Section 12, out of scope).
@@ -203,6 +193,42 @@ export function enrichFacilityRow(row) {
     production_unit: PRODUCTION_UNIT,
     currency: CURRENCY,
   }
+}
+
+// Value Mapping's fuel-type + equipment/vehicle-description combine (spec
+// Section 8/Business Rules, v7.0) — used when a CSV has no single column
+// that maps cleanly to `emission_source`, only separate fuel-type and
+// equipment/vehicle-description columns. Keyword-matches the fuel word
+// first, then uses mobile-equipment keywords to pick stationary vs. mobile
+// combustion when a fuel (like diesel) exists in both. Returns a SOURCES id
+// or null if neither text contains a recognizable fuel keyword.
+const MOBILE_KEYWORDS = ['vehicle', 'truck', 'forklift', 'car', 'van', 'mobile', 'fleet', 'tractor', 'lorry']
+const FUEL_KEYWORDS = [
+  { match: ['heavy fuel oil', 'hfo'], word: 'heavy fuel oil' },
+  { match: ['heating oil', 'gasoil', 'gas oil'], word: 'heating oil' },
+  { match: ['natural gas', 'natgas'], word: 'natural gas' },
+  { match: ['lpg', 'propane'], word: 'lpg' },
+  { match: ['gasoline', 'petrol'], word: 'gasoline' },
+  { match: ['diesel'], word: 'diesel' },
+  { match: ['electric', 'grid'], word: 'electricity' },
+  { match: ['r-404a', 'r404a'], word: 'r-404a' },
+  { match: ['r-134a', 'r134a'], word: 'r-134a' },
+]
+
+export function resolveSourceFromFuelAndEquipment(fuelRaw, equipRaw) {
+  const fuel = String(fuelRaw ?? '').trim().toLowerCase()
+  const equip = String(equipRaw ?? '').trim().toLowerCase()
+  if (!fuel && !equip) return null
+  const combined = `${fuel} ${equip}`.trim()
+
+  const fuelHit = FUEL_KEYWORDS.find((f) => f.match.some((m) => combined.includes(m)))
+  if (!fuelHit) return null
+
+  const isMobile = MOBILE_KEYWORDS.some((k) => combined.includes(k))
+  const candidates = SOURCES.filter((s) =>
+    isMobile ? s.categoryId === 'cat_mobile_combustion' : s.categoryId !== 'cat_mobile_combustion',
+  )
+  return candidates.find((s) => s.name.toLowerCase().includes(fuelHit.word))?.id ?? null
 }
 
 // Case-insensitive, trimmed exact match against a lookup list's `name` (or

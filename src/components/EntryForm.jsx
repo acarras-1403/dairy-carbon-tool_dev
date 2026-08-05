@@ -31,9 +31,10 @@ const GDPR_STATEMENT =
   'Your data will be stored securely and used only to track who logged each activity entry for internal accountability purposes. You can request deletion of your name at any time by contacting sustainability@purepastures.com.'
 
 // Every field required except Notes, Evidence link, Reviewer (spec Section
-// 8 / Business Rules). Step 2 of 2 (spec v5.0) — blocked from submitting
-// without a matching Facility Reporting Period for facility + reporting
-// year; blocked entries are redirected inline to Step 1 (App.jsx) instead.
+// 8 / Business Rules). Blocked from submitting without a matching Facility
+// Data entry for facility + reporting year (D-13, still a hard block in
+// v7.0) — a blocked submit opens the Facility Data modal in place
+// (App.jsx), instead of v5.0's inline redirect to a separate step.
 export default function EntryForm({ facilityPeriods, onAdd, onBlocked }) {
   const [form, setForm] = useState(blank)
   const [error, setError] = useState('')
@@ -103,9 +104,7 @@ export default function EntryForm({ facilityPeriods, onAdd, onBlocked }) {
         facility_id: form.facility_id,
         reporting_year: yearFromPeriod(form.reporting_period),
       })
-      setError(
-        'No Facility Reporting Period on file for this facility and year. Add it in Step 1 above, then resubmit this entry.',
-      )
+      setError('No Facility Data on file for this facility and year — add it in the window that just opened, then submit this entry again.')
       return
     }
 
@@ -140,7 +139,7 @@ export default function EntryForm({ facilityPeriods, onAdd, onBlocked }) {
 
   return (
     <form onSubmit={handleSubmit} className="card space-y-4">
-      <h2 className="text-lg font-semibold text-deepblue">Log activity data</h2>
+      <h2 className="text-lg font-semibold text-accent">Log activity data</h2>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
@@ -241,7 +240,7 @@ export default function EntryForm({ facilityPeriods, onAdd, onBlocked }) {
               onChange={(e) => set('activity_data_value_raw', e.target.value)}
               required
             />
-            <span className="whitespace-nowrap rounded-md bg-deepblue/5 px-3 py-2 text-sm text-slate">
+            <span className="whitespace-nowrap rounded-md bg-accent/5 px-3 py-2 text-sm text-slate">
               {selectedSource?.unit ?? '—'}
             </span>
           </div>
@@ -295,7 +294,7 @@ export default function EntryForm({ facilityPeriods, onAdd, onBlocked }) {
         </div>
       </div>
 
-      <div className="rounded-md border border-line bg-deepblue/5 p-3">
+      <div className="rounded-md border border-line bg-accent/5 p-3">
         <label className="flex items-start gap-2 text-sm text-ink">
           <input
             type="checkbox"
@@ -309,7 +308,7 @@ export default function EntryForm({ facilityPeriods, onAdd, onBlocked }) {
         </label>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       <div className="flex justify-end">
         <button type="submit" className="btn-primary" disabled={submitting}>
