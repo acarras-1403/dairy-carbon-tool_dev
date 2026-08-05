@@ -88,6 +88,36 @@ export function toCsv(columns, records) {
   return [header, ...lines].join('\n')
 }
 
+// Static bulk-import template (spec Section 3, v7.0) — header row exactly
+// matches CLAUDE.md's CSV import target fields, plus one example row so a
+// user can build a compliant file from scratch instead of only reconciling
+// an existing export.
+const TEMPLATE_COLUMNS = [
+  'facility',
+  'purchase_date',
+  'emission_source',
+  'activity_data_value',
+  'data_quality_rating',
+  'notes',
+  'evidence_link',
+  'reviewer',
+].map((key) => ({ key, label: key }))
+
+const TEMPLATE_EXAMPLE_ROW = {
+  facility: 'North Dairy Plant',
+  purchase_date: '15/03/2026',
+  emission_source: 'Diesel (stationary)',
+  activity_data_value: '1250',
+  data_quality_rating: 'measured',
+  notes: 'Example row — replace with your own data',
+  evidence_link: 'https://example.com/invoice.pdf',
+  reviewer: 'Jane Doe',
+}
+
+export function templateCsv() {
+  return toCsv(TEMPLATE_COLUMNS, [TEMPLATE_EXAMPLE_ROW])
+}
+
 export function downloadCsv(filename, csvText) {
   const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)

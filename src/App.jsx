@@ -1,30 +1,37 @@
-import { useEffect, useRef, useState } from 'react'
-import EntryForm from './components/EntryForm.jsx'
-import EntryTable from './components/EntryTable.jsx'
-import CsvImport from './components/CsvImport.jsx'
-import DataReview from './components/DataReview.jsx'
-import FacilityForm from './components/FacilityForm.jsx'
-import FacilityTable from './components/FacilityTable.jsx'
+import { useEffect, useState } from 'react'
+import EmissionsDashboard from './components/EmissionsDashboard.jsx'
+import ActivityDataEntry from './components/ActivityDataEntry.jsx'
+import FacilityModal from './components/FacilityModal.jsx'
+import ThemeToggle from './components/ThemeToggle.jsx'
 import { fetchFacilityReportingPeriods, fetchActivityData } from './lib/supabaseData.js'
 import { enrichActivityRow, enrichFacilityRow } from './data/lookups.js'
+import { getInitialTheme, applyTheme } from './lib/theme.js'
 
-// Placeholder only — Tool B (the future emissions dashboard) is not yet
-// built. Swap this URL once it deploys (spec Section 8, Dashboard Tab).
-const DASHBOARD_PLACEHOLDER_URL = 'https://purepastures-dashboard.example.com'
+const TABS = [
+  { id: 'dashboard', label: 'Emissions Dashboard' },
+  { id: 'entry', label: 'Activity Data Entry' },
+]
 
-// Tier 2 (D3+A1, spec v5.0): both tables persist in Supabase and survive a
+// Tier 2 (D3+A1, spec v7.0): both tables persist in Supabase and survive a
 // closed tab or a separate session — RLS grants anon read+insert only, no
-// update/delete anywhere in this frontend. Facility Reporting Period is
-// Step 1 (must exist before Activity Data can be submitted for that
-// facility+year); Data Entry (manual + CSV) is Step 2. Data Review stays
-// session-only — a flagged row was never written to Supabase to begin with.
+// update/delete anywhere in this frontend. Two top-level tabs only —
+// Facility Data and past-entry review live inside Activity Data Entry (a
+// modal and a tucked section, respectively), never as their own tabs.
 export default function App() {
+  const [activeTab, setActiveTab] = useState('dashboard')
+  const [theme, setTheme] = useState(getInitialTheme)
+
   const [entries, setEntries] = useState([])
   const [facilityEntries, setFacilityEntries] = useState([])
   const [reviewRows, setReviewRows] = useState([])
   const [loadError, setLoadError] = useState('')
-  const [frpPrefill, setFrpPrefill] = useState(null)
-  const facilitySectionRef = useRef(null)
+  const [dataLoaded, setDataLoaded] = useState(false)
+
+  const [facilityModal, setFacilityModal] = useState({ open: false, blocked: false, prefill: null })
+
+  useEffect(() => {
+    applyTheme(theme)
+  }, [theme])
 
   useEffect(() => {
     let cancelled = false
@@ -43,6 +50,8 @@ export default function App() {
             'Could not load persisted data from Supabase. If this tool has been idle for about a week, the free-tier project may have paused — try again shortly.',
           )
         }
+      } finally {
+        if (!cancelled) setDataLoaded(true)
       }
     }
     load()
@@ -75,78 +84,89 @@ export default function App() {
 
   function addFacilityEntry(row) {
     setFacilityEntries((prev) => [enrichFacilityRow(row), ...prev])
-    setFrpPrefill(null)
+    setFacilityModal({ open: false, blocked: false, prefill: null })
+  }
+
+  function openFacilityModal(prefill = null) {
+    setFacilityModal({ open: true, blocked: false, prefill })
   }
 
   function handleBlocked(prefill) {
-    setFrpPrefill(prefill)
-    facilitySectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setFacilityModal({ open: true, blocked: true, prefill })
+  }
+
+  function closeFacilityModal() {
+    setFacilityModal((m) => ({ ...m, open: false }))
   }
 
   return (
     <div className="min-h-screen bg-offwhite">
-      <header className="border-b border-line bg-white">
+      <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-2">
-            <span className="inline-block h-4 w-4 rounded-sm bg-lime" aria-hidden />
-            <span className="text-base font-bold text-deepblue">
-              PurePastures GHG — Data Entry
-            </span>
+            <span className="inline-block h-4 w-4 rounded-sm bg-accent" aria-hidden />
+            <span className="text-base font-bold text-accent">PurePastures GHG</span>
           </div>
-          <nav className="flex items-center gap-2 text-sm font-medium">
-            <span className="rounded-md bg-deepblue/5 px-3 py-1.5 text-deepblue">
-              Data Entry
-            </span>
-            <a
-              href={DASHBOARD_PLACEHOLDER_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-md px-3 py-1.5 text-slate transition hover:bg-deepblue/5 hover:text-deepblue"
-            >
-              Dashboard ↗
-            </a>
-          </nav>
+          <div className="flex items-center gap-2">
+            <nav className="flex items-center gap-2 text-sm font-medium">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={
+                    activeTab === tab.id
+                      ? 'rounded-md bg-accent/10 px-3 py-1.5 text-accent'
+                      : 'rounded-md px-3 py-1.5 text-slate transition hover:bg-accent/5 hover:text-ink'
+                  }
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+            <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))} />
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl space-y-10 px-4 py-8">
-        <p className="text-sm text-slate">
-          Log annual Facility Reporting Period data first, then activity
-          data — one at a time or in bulk via CSV. Entries are stored in
-          Supabase and persist across sessions.
-        </p>
-
+      <main className="mx-auto max-w-4xl space-y-8 px-4 py-8">
         {loadError && (
-          <p className="card text-sm text-red-700" role="alert">
+          <p className="card text-sm text-red-700 dark:text-red-400" role="alert">
             {loadError}
           </p>
         )}
 
-        <div ref={facilitySectionRef} className="space-y-6">
-          <h2 className="text-xl font-bold text-deepblue">
-            Step 1 — Facility Reporting Period
-          </h2>
-          <FacilityForm prefill={frpPrefill} onAdd={addFacilityEntry} />
-          <FacilityTable entries={facilityEntries} />
-        </div>
+        {activeTab === 'dashboard' && (
+          <EmissionsDashboard
+            loading={!dataLoaded}
+            hasData={entries.length > 0}
+            onSwitchToEntry={() => setActiveTab('entry')}
+          />
+        )}
 
-        <div className="space-y-6">
-          <h2 className="text-xl font-bold text-deepblue">Step 2 — Activity Data</h2>
-          <EntryForm
-            facilityPeriods={facilityEntries}
-            onAdd={addEntry}
+        {activeTab === 'entry' && (
+          <ActivityDataEntry
+            entries={entries}
+            facilityEntries={facilityEntries}
+            reviewRows={reviewRows}
+            onAddEntry={addEntry}
+            onImportComplete={handleImportComplete}
+            onPromoteReviewRow={promoteReviewRow}
+            onDiscardReviewRow={discardReviewRow}
+            onOpenFacilityModal={openFacilityModal}
             onBlocked={handleBlocked}
           />
-          <CsvImport facilityPeriods={facilityEntries} onImportComplete={handleImportComplete} />
-          <DataReview
-            rows={reviewRows}
-            facilityPeriods={facilityEntries}
-            onPromote={promoteReviewRow}
-            onDiscard={discardReviewRow}
-          />
-          <EntryTable entries={entries} />
-        </div>
+        )}
       </main>
+
+      <FacilityModal
+        open={facilityModal.open}
+        blocked={facilityModal.blocked}
+        prefill={facilityModal.prefill}
+        facilityEntries={facilityEntries}
+        onAdd={addFacilityEntry}
+        onClose={closeFacilityModal}
+      />
     </div>
   )
 }

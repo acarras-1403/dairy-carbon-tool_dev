@@ -11,9 +11,10 @@ import {
 } from '../data/lookups.js'
 import { findEntryIssues } from '../lib/importRows.js'
 import { findFacilityMatch } from '../lib/facilityMatch.js'
+import { yearFromPeriod } from '../lib/periods.js'
 import { insertActivityData } from '../lib/supabaseData.js'
 
-function ReviewRow({ row, facilityPeriods, onPromote, onDiscard }) {
+function ReviewRow({ row, facilityPeriods, onPromote, onDiscard, onOpenFacilityModal }) {
   const [form, setForm] = useState({
     reporting_period: row.reporting_period,
     facility_id: row.facility_id,
@@ -96,7 +97,7 @@ function ReviewRow({ row, facilityPeriods, onPromote, onDiscard }) {
 
   return (
     <div className="rounded-md border border-line p-4 space-y-3">
-      <p className="text-sm font-medium text-red-700">{row.issues.join('; ')}</p>
+      <p className="text-sm font-medium text-red-700 dark:text-red-400">{row.issues.join('; ')}</p>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
@@ -181,7 +182,7 @@ function ReviewRow({ row, facilityPeriods, onPromote, onDiscard }) {
               value={form.activity_data_value_raw}
               onChange={(e) => set('activity_data_value_raw', e.target.value)}
             />
-            <span className="whitespace-nowrap rounded-md bg-deepblue/5 px-3 py-2 text-sm text-slate">
+            <span className="whitespace-nowrap rounded-md bg-accent/5 px-3 py-2 text-sm text-slate">
               {hierarchy?.unit ?? '—'}
             </span>
           </div>
@@ -230,9 +231,20 @@ function ReviewRow({ row, facilityPeriods, onPromote, onDiscard }) {
         </div>
       </div>
 
-      {promoteError && <p className="text-sm text-red-600">{promoteError}</p>}
+      {promoteError && <p className="text-sm text-red-600 dark:text-red-400">{promoteError}</p>}
 
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
+        <button
+          className="btn-ghost"
+          onClick={() =>
+            onOpenFacilityModal({
+              facility_id: form.facility_id,
+              reporting_year: yearFromPeriod(form.reporting_period),
+            })
+          }
+        >
+          Add Facility Data
+        </button>
         <button className="btn-ghost" onClick={() => onDiscard(row.id)}>
           Discard
         </button>
@@ -245,19 +257,20 @@ function ReviewRow({ row, facilityPeriods, onPromote, onDiscard }) {
 }
 
 // Holds only flagged rows from CSV import (spec Section 8) — never written
-// to Supabase until promoted. Fix and promote (persists), or discard.
-export default function DataReview({ rows, facilityPeriods, onPromote, onDiscard }) {
+// to Supabase until promoted. Fix and promote (persists), or discard. Lives
+// inside Activity Data Entry (v7.0 — no separate step/page anymore).
+export default function DataReview({ rows, facilityPeriods, onPromote, onDiscard, onOpenFacilityModal }) {
   if (rows.length === 0) return null
 
   return (
     <section className="card space-y-4">
-      <h2 className="text-lg font-semibold text-deepblue">
+      <h2 className="text-lg font-semibold text-accent">
         Data Review — needs attention ({rows.length})
       </h2>
       <p className="text-sm text-slate">
-        These rows had an unparseable date, a required field still blank, an
-        unrecognized unit, or no matching Facility Reporting Period after
-        import mapping. Fix and promote them, or discard.
+        These rows had an unparseable date, a required field still blank, or
+        no matching Facility Data after import mapping. Fix and promote
+        them, or discard.
       </p>
       <div className="space-y-3">
         {rows.map((row) => (
@@ -267,6 +280,7 @@ export default function DataReview({ rows, facilityPeriods, onPromote, onDiscard
             facilityPeriods={facilityPeriods}
             onPromote={onPromote}
             onDiscard={onDiscard}
+            onOpenFacilityModal={onOpenFacilityModal}
           />
         ))}
       </div>

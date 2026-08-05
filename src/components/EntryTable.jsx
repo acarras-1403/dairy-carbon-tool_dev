@@ -16,20 +16,18 @@ const COLUMNS = [
   { key: 'notes', label: 'Notes' },
 ]
 
-// Reflects every persisted Activity Data record (spec v5.0 — no longer
-// session-scoped); no edit/delete anywhere here, matching the RLS policies
-// (insert-only, no update/delete grant).
+// Reflects every persisted Activity Data record (spec v7.0 — tucked inside
+// the "Past activity data entries" Collapsible, not its own tab); no
+// edit/delete anywhere here, matching the RLS policies (insert-only, no
+// update/delete grant).
 export default function EntryTable({ entries }) {
   function handleDownload() {
     downloadCsv('purepastures-activity-data.csv', toCsv(COLUMNS, entries))
   }
 
   return (
-    <section className="card space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-deepblue">
-          Activity data — all records ({entries.length})
-        </h2>
+    <div className="space-y-4">
+      <div className="flex justify-end">
         <button className="btn-accent" disabled={!entries.length} onClick={handleDownload}>
           Download Activity Data CSV
         </button>
@@ -85,6 +83,6 @@ export default function EntryTable({ entries }) {
           </table>
         </div>
       )}
-    </section>
+    </div>
   )
 }

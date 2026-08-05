@@ -2,8 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+/* C-MORE v2 token pair (CLAUDE.md Brand hard rules). Neutrals lead in both
+   themes; --accent is the only role that swaps identity (Deep Blue in
+   light, Lime in dark) — every component class below reads these
+   variables instead of hardcoding a theme's colors. */
 :root {
   color-scheme: light;
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --border: #e6e7ec;
+  --ink: #1f2333;
+  --slate: #5b6072;
+  /* rgb triplet (not hex) so Tailwind's `<alpha-value>` opacity modifiers
+     (bg-accent/5, ring-accent/30, …) work against a CSS-variable color. */
+  --accent-rgb: 20 26 50; /* #141A32 Deep Blue */
+  --accent-contrast: #fafafa;
+}
+
+:root.dark {
+  color-scheme: dark;
+  --bg: #0f1220;
+  --surface: #171b30;
+  --border: #2a2f45;
+  --ink: #f2f3f7;
+  --slate: #9aa0b4;
+  --accent-rgb: 192 250 0; /* #C0FA00 Lime */
+  --accent-contrast: #0f1220;
 }
 
 html,
@@ -14,37 +38,38 @@ body,
 
 body {
   margin: 0;
-  background-color: #fafafa; /* Off White — never plain white */
-  color: #1f2333; /* Ink */
+  background-color: var(--bg);
+  color: var(--ink);
   font-family: 'Figtree', ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-md bg-deepblue px-4 py-2
-      text-sm font-semibold text-offwhite transition hover:bg-deepblue/90
-      focus:outline-none focus:ring-2 focus:ring-deepblue disabled:opacity-50;
+    @apply inline-flex items-center justify-center rounded-md bg-accent px-4 py-2
+      text-sm font-semibold text-accentContrast transition hover:opacity-90
+      focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50;
   }
   .btn-accent {
     @apply inline-flex items-center justify-center rounded-md bg-lime px-4 py-2
       text-sm font-semibold text-deepblue transition hover:brightness-95
-      focus:outline-none focus:ring-2 focus:ring-deepblue disabled:opacity-50;
+      focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50;
   }
   .btn-ghost {
     @apply inline-flex items-center justify-center rounded-md border border-line
-      bg-white px-3 py-2 text-sm font-medium text-deepblue transition
-      hover:bg-deepblue/5 focus:outline-none focus:ring-2 focus:ring-deepblue/30;
+      bg-surface px-3 py-2 text-sm font-medium text-accent transition
+      hover:bg-accent/5 focus:outline-none focus:ring-2 focus:ring-accent/30;
   }
   .field-input {
-    @apply w-full rounded-md border border-line bg-white px-3 py-2 text-sm
-      text-ink shadow-sm focus:border-deepblue focus:outline-none
-      focus:ring-1 focus:ring-deepblue;
+    @apply w-full rounded-md border border-line bg-surface px-3 py-2 text-sm
+      text-ink shadow-sm focus:border-accent focus:outline-none
+      focus:ring-1 focus:ring-accent;
   }
   .label {
     @apply mb-1 block text-xs font-medium uppercase tracking-wide text-slate;
   }
   .card {
-    @apply rounded-card border border-line bg-white p-6 shadow-sm;
+    @apply rounded-card border border-line bg-surface p-6 shadow-sm;
   }
 }

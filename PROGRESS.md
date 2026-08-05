@@ -4,175 +4,173 @@
 > anything. Update it at every save point. Replace content — do not append.
 > History lives in git.
 
-**Session:** 4 — v5.0 build complete
-**Last updated:** 2026-07-16 — by Claude Code, session 4
-**Live URL:** pending — Netlify's native integration deploys on push to `main`;
-builder confirms in the Netlify dashboard (no MCP visibility, see spec Section 4).
+**Session:** 5 — v7.0 build complete
+**Last updated:** 2026-08-05 — by Claude Code, session 5
+**Live URL:** http://purepastures-ghg.netlify.app — **currently misconfigured, see Known issues.** Its env vars point at the wrong Supabase project; fix that first, then confirm the push-triggered rebuild picked up this session's code.
 
 ## Current state
-Tool matches product-spec.md v5.0 (Tier 2, D3+A1 — persisted, no login).
-Promoted both tables from session-only (D2) to Supabase (D3), reversing
-D-9's earlier deferral (D-11).
 
-A brand-new Supabase project `purepastures` (id `ztkgbowwrlszbbfuhkid`,
-region eu-central-1/Frankfurt, Free plan) was created via Supabase MCP —
-explicitly not reusing either pre-existing project already in the org
-(`purepastures-ghg`, `acarras-1403's Project`, both dated 2026-07-04, one
-almost certainly the prohibited v1.0 project; see Known issues). Schema
-(`activity_data`, `facility_reporting_period`) and RLS (anon read+insert
-only, no update/delete) built via `apply_migration`; confirmed correct with
-the security advisor and by executing SQL as the `anon` role directly
-(select/insert succeed, update/delete silently affect 0 rows). Full detail
-in `docs/supabase-setup.md` (new this session — schema source of truth).
+Tool matches product-spec.md v7.0. Navigation is down to two top-level tabs
+— **Emissions Dashboard** (first) and **Activity Data Entry** (second) —
+replacing v6.0's four-tab layout. Facility Reporting Period ("Facility
+Data" in the UI; table/columns unchanged) is no longer a page or step: it's
+`FacilityModal.jsx`, opened via a button in Activity Data Entry or
+automatically by D-13's blocking validation (still a hard block, only the
+redirect target changed — modal, not a page). Both v6.0 Records tabs are
+gone; past entries live in collapsed-by-default `Collapsible.jsx` sections
+— one at the bottom of Activity Data Entry, one inside the Facility Data
+modal.
 
-`product-spec.md` had drifted back to the repo root a third time (same
-failure mode as sessions 2 and 3) — moved back to `docs/product-spec.md`.
+New components this session: `EmissionsDashboard.jsx` (existence check
+against already-fetched `entries` — no data → local empty state with a
+tab-switch button; data exists → `window.location.href` to the live Tool B
+URL, `https://ghgdashboarddev.netlify.app/`, never rendering its content
+locally, per D-12), `ActivityDataEntry.jsx` (assembles intro copy, the
+Facility Data button row, bulk import, Data Review, manual entry, and the
+tucked past-entries section in the spec's exact order), `FacilityModal.jsx`,
+`Collapsible.jsx`, `ThemeToggle.jsx`.
 
-App rebuilt around persistence: `src/lib/supabaseClient.js` (client),
-`src/lib/supabaseData.js` (fetch/insert for both tables), `src/lib/
-facilityMatch.js` (single derivation point for the Facility Reporting
-Period auto-detect check, same pattern as `deriveHierarchy`). `App.jsx`
-fetches both tables on mount, reordered to Facility Reporting Period
-(Step 1) above Data Entry (Step 2), and threads a `frpPrefill` state from a
-blocked Activity Data submission down to `FacilityForm`.
+Theming: `src/lib/theme.js` persists light/dark to `localStorage` (falls
+back to OS preference) and toggles a `dark` class on `<html>`. Every brand
+token (`offwhite`/`surface`/`ink`/`slate`/`line`/`accent`) is a Tailwind
+color reading a CSS custom property (`src/index.css`), so the same class
+names swap per theme — including the accent **role** swap (Deep Blue
+`#141A32` in light, Lime `#C0FA00` in dark) — without `dark:` duplication
+everywhere. `--accent` is stored as an RGB triplet (`--accent-rgb`) rather
+than a hex string specifically so Tailwind's opacity modifiers
+(`bg-accent/5`, `ring-accent/30`) resolve — a plain hex-in-a-variable broke
+`@apply` in `index.css` (`tailwind.config.js` uses
+`rgb(var(--accent-rgb) / <alpha-value>)`).
 
-`EntryForm.jsx`: after computing the raw→converted conversion as before,
-checks for a matching Facility Reporting Period (facility + year from
-`reporting_period`). No match blocks submission, calls back to `App.jsx` to
-pre-fill Step 1 and scroll it into view (verified: scrollY moves from the
-Step 2 form to the Step 1 section). Match found inserts directly into
-Supabase. Added the GDPR checkbox + exact data statement text (spec Section
-7) — blocks submit only when Reviewer is filled in and the box is
-unchecked (verified both the blocked and pass-through paths).
+Manual entry form (`EntryForm.jsx`) already had Evidence link, Reviewer,
+the locked unit indicator, and the GDPR checkbox from session 4 — v7.0 only
+changed its blocked-submit path to open the modal (`onBlocked`) instead of
+scrolling to a since-removed Step 1 section.
 
-`FacilityForm.jsx`: accepts the `frpPrefill` values, inserts into Supabase,
-surfaces a friendly message on the new `UNIQUE(facility, reporting_year)`
-constraint violation (Postgres `23505`) rather than a raw DB error.
+CSV import (`importRows.js`): `MAPPABLE_FIELDS` re-synced to CLAUDE.md's
+exact 7 target keys (facility, source, purchase_date, activity value, data
+quality, evidence link, reviewer — notes still folds in automatically) by
+**removing** the old `activity_data_unit_raw` mappable field, not just
+relabeling it — unit is now always derived from the resolved
+`emission_source` for CSV rows too, matching the manual-entry lock exactly.
+`lookups.js` gained `resolveSourceFromFuelAndEquipment()`: a keyword
+heuristic (fuel word + mobile-equipment word) used as an automatic fallback
+when no single column maps cleanly to Emission source but the CSV has
+separate fuel-type and equipment/vehicle-description columns (auto-detected
+by header regex) — satisfies the Value Mapping combine business rule
+without adding a third mappable target field. `DataReview.jsx`'s no-match
+message now names the facility/year and points at "the Facility Data
+button in Activity Data Entry," and gained an "Add Facility Data" action
+that opens the modal directly from a flagged row.
 
-CSV import (`importRows.js`, `CsvImport.jsx`, `DataReview.jsx`):
-`findEntryIssues` gained the same Facility Reporting Period check, flagging
-unmatched rows to Data Review with the spec's exact wording ("No Facility
-Reporting Period on file for this facility and year.") — verified
-alongside the existing unit-mismatch and unparseable-date flags in one
-three-row test file (one flagged for FRP only, one for both unit mismatch
-and FRP, one for date only — confirms the FRP check doesn't double-fire
-when the row is already unusable for other reasons). Clean rows now bulk-
-insert to Supabase; Data Review promote inserts a single row on success.
-CsvImport also gained a GDPR notice + checkbox on the Column Mapping step,
-shown only once the Reviewer column is mapped, gating both "Continue" and
-"Finish import" (verified).
+`lib/csv.js` gained `templateCsv()` — static header row (exact match:
+`facility,purchase_date,emission_source,activity_data_value,data_quality_rating,notes,evidence_link,reviewer`)
+plus one example row, wired to a "Download template (.csv)" link in the
+bulk import card.
 
-`EntryTable.jsx`/`FacilityTable.jsx`: dropped the "Remove" button entirely
-— there is no update/delete RLS grant anywhere in this build, so a
-client-only remove would misrepresent what's actually persisted. Both now
-read "all records" and pull from state fetched from Supabase; CSV exports
-(spec Section 3/Business Rules) now cover everything ever persisted, with
-Activity Data excluding Data Review rows automatically (they were never
-inserted to begin with).
-
-`toActivityDataRow`/`toFacilityReportingPeriodRow`/`enrichActivityRow`/
-`enrichFacilityRow` (new, `lookups.js`) are the single conversion points
-between the DB's minimal official columns and the richer in-memory shape
-the UI displays — category/subcategory/scope and the fixed production
-unit/currency are never stored, only re-derived at read time.
-
-**Verification note:** this build session's sandbox blocked direct HTTPS
-egress to `*.supabase.co` from the browser/Node (organization egress
-policy — confirmed via the agent-proxy status endpoint, not a bug). Client-
-side logic (all the gating/blocking above, which runs before any network
-call) was verified in a real headless-browser pass. Persistence itself —
-insert, RLS enforcement, the unique constraint — was verified directly
-against the live database via the Supabase MCP connection (which isn't
-subject to the same sandbox restriction) rather than through an actual
-browser round-trip. `npm run build` is clean. **Recommend one live
-browser pass against the deployed Netlify URL** to confirm the full
-insert → reload → still-there loop end-to-end once env vars are set.
+**Verification this session:** the sandbox again blocked outbound HTTPS to
+`*.supabase.co` (org egress policy, confirmed via the agent-proxy status
+endpoint — same limitation as session 4). No schema or RLS changed this
+session, so no live DB round-trip was needed to confirm persistence
+mechanics (session 4 already verified insert/select/RLS directly).
+Everything that *did* change was verified two ways: (1) unit tests of the
+new pure logic — `resolveSourceFromFuelAndEquipment` keyword matching,
+`buildEntryFromCsvRow`/`findEntryIssues` with the unit field removed,
+`templateCsv()`'s exact header — all passing; (2) a full headless-browser
+pass (`npm run build` clean, `npm run dev`) driving: two-tab nav, theme
+toggle (confirmed `dark` class + token swap in both screenshots), a blocked
+manual submit opening the modal with the exact spec banner text ("No
+facility data on file for North Dairy Plant in 2026. Add it below to
+continue."), manual modal open (banner correctly absent), both tucked
+sections expanding, and the template CSV downloading with the exact header
+row. The Dashboard's blocked Supabase fetch does eventually resolve in this
+sandbox (~30s, after the browser's own connection retries exhaust) into
+the correct state — loadError banner + empty state — confirming the error
+path renders correctly; the delay itself is a sandbox artifact, not app
+latency.
 
 ## Last session
-Session 4: promoted both tables to Supabase (new `purepastures` project,
-schema + RLS via MCP, `docs/supabase-setup.md` written), reordered the UI
-to Facility Reporting Period (Step 1) / Data Entry (Step 2), built the
-auto-detect/blocking-validation + inline redirect linking Activity Data to
-Facility Reporting Period (manual entry, CSV import, and Data Review
-promote all share one check), widened both CSV exports to all persisted
-records, and added the GDPR consent framework for the `reviewer` field on
-both entry paths.
+
+Session 5: rebuilt navigation to two tabs; replaced the Facility Reporting
+Period page and both v6.0 Records tabs with a Facility Data modal and two
+tucked Collapsible sections; wired D-13's hard block to open the modal
+pre-filled instead of redirecting; added the Emissions Dashboard
+existence-check/redirect; added the CSV template download; re-synced
+Column Mapping's target fields (removed the unit field) and added the
+fuel+equipment combine heuristic for Value Mapping; updated Data Review's
+no-match message to reference the modal; added the light/dark theme
+toggle wired to C-MORE's token pair. **Discovered mid-session:** the live
+Netlify site's env vars point at the wrong Supabase project — see Known
+issues, this is the priority for next session before anything else.
 
 ## Remaining work
-- [ ] Confirm the push-triggered Netlify build succeeds (builder checks dashboard)
-- [ ] Walk spec Section 13 acceptance criteria 14–16 (deploy-dependent) once the live URL is confirmed — criteria 1–13 verified session 4 (12 via direct SQL role-switching against live RLS, not the Supabase dashboard UI)
-- [ ] Decide whether to clean up the two unrelated pre-existing Supabase projects found in the org session 4 (`purepastures-ghg`, `acarras-1403's Project`) — left untouched, not part of that build (D-14 limitation)
-- [ ] (v7 revision) Reduce navigation to two tabs: Emissions Dashboard (first), Activity Data Entry (second) — spec Section 8
-- [ ] (v7 revision) Remove the Facility Reporting Period page and both v6.0 Records tabs entirely
-- [ ] (v7 revision) Build the Emissions Dashboard data-existence check: empty state if no `activity_data` rows exist, else redirect to https://ghgdashboarddev.netlify.app/ — never render that dashboard's content locally
-- [ ] (v7 revision) Build the Facility Data modal — manual trigger button plus automatic trigger on a blocked entry, pre-filled with facility+year and a warning banner
-- [ ] (v7 revision) Build the tucked "past facility data entries" section inside the Facility Data modal, with CSV download
-- [ ] (v7 revision) Rewire the Facility Data blocking validation (D-13, still a hard block) to open the modal instead of redirecting to a page
-- [ ] (v7 revision) Add intro/description text to Activity Data Entry; position the Facility Data button and bulk import card per spec Section 8's exact order
-- [ ] (v7 revision) Build the tucked "past activity data entries" section at the bottom of Activity Data Entry, with CSV download
-- [ ] (v7 revision) Add Evidence link, Reviewer, the GDPR consent checkbox + data statement, and the locked unit indicator to the manual entry form
-- [ ] (v7 revision) Re-sync Column Mapping's target field list to: facility, purchase_date, emission_source, activity_data_value, data_quality_rating, notes, evidence_link, reviewer
-- [ ] (v7 revision) Update Value Mapping's emission-source resolution to combine fuel-type and equipment-description columns where both exist
-- [ ] (v7 revision) Update Data Review's "no Facility Data match" message to point at the modal, not a page
-- [ ] (v7 revision) Add the "Download template (.csv)" link under bulk import — header row plus one example row
-- [ ] (v7 revision) Add the light/dark theme toggle to the top bar, wired to C-MORE v2's light/dark token sets
-- [ ] (v7 revision) Confirm C-MORE brand style sheet v2 is installed at .claude/skills/c-more/ and rebuild affected components against its tokens
-- [ ] (v7 revision) Local test pass: blocked-entry modal flow end to end, both tucked sections, dashboard empty state, template download, theme toggle
-- [ ] (v7 revision) Acceptance criteria pass — verify every criterion in spec Section 13 (items 1–38)
-- [ ] (v7 revision) Redeploy and confirm live
+
+- [ ] **Fix the live Netlify site's env vars** (flagged to builder this session, not changed automatically — see Known issues)
+- [ ] Once fixed, confirm the push-triggered rebuild deploys this session's code and do one live browser pass end-to-end
+- [ ] Walk spec Section 13 acceptance criteria 25–38 (this iteration's new/changed items) against the live deploy — verified locally this session, not yet against production
+- [ ] Optional: run a Supabase QA/advisor pass now that Tool B's tables have appeared in the shared project, to confirm this tool's RLS/policies are still exactly as documented (no accidental interaction)
 
 ## Build decisions
-- `category`/`subcategory`/`scope` and Facility Reporting Period's
-  `production_unit`/`currency` are not persisted columns — CLAUDE.md's
-  authoritative schema lists neither, so they stay purely client-derived
-  from `emission_source`/`facility` (via the existing `deriveHierarchy` and
-  the fixed `PRODUCTION_UNIT`/`CURRENCY` constants) at read time, avoiding
-  schema drift from the documented source of truth.
-- Added a database-level `UNIQUE(facility, reporting_year)` constraint on
-  `facility_reporting_period` — spec Section 5 names this as the table's
-  "key fields ... unique together"; enforcing it in Postgres (not just
-  app logic) closes the same class of gap D-2/D-13 already flagged for
-  other application-logic-only validations in this project's history.
-- Dropped the "Remove" button from both `EntryTable` and `FacilityTable` —
-  neither table's RLS policy grants update or delete, so a client-only
-  remove (leaving the row in Supabase) would visually lie about what's
-  actually persisted. Not called for explicitly in spec Section 8, but
-  follows directly from the Hard Rule already in place.
-- New Supabase project created fresh (`purepastures`, eu-central-1) rather
-  than reusing either pre-existing project already present in the org —
-  confirmed with the builder this session given neither existing project
-  was named `purepastures` and one is likely the prohibited v1.0 project.
-- GDPR consent checkbox blocks submission only when `reviewer` actually has
-  a value (manual form) or the Reviewer column is actually mapped (CSV
-  import) — consent is moot, and the checkbox non-blocking, when no name
-  is being collected at all.
+
+- CSS custom properties for every brand token, not `dark:` variant
+  duplication — one set of class names (`bg-accent`, `text-ink`, …) swaps
+  automatically off the `dark` class on `<html>`. `--accent` specifically
+  stored as an RGB triplet so Tailwind's `/<alpha-value>` opacity modifiers
+  work against it (a plain hex CSS variable fails inside `@apply`).
+- `activity_data_unit_raw` removed from CSV `MAPPABLE_FIELDS` entirely
+  (not relabeled) — unit is always derived from the resolved
+  `emission_source`, for CSV rows exactly like manual entry; the old
+  unit-mismatch flagging path in `findEntryIssues`/`unitMatchesSource` was
+  deleted as dead code rather than left unreachable.
+- Fuel-type + equipment/vehicle-description combine implemented as an
+  automatic fallback (header-name regex detection: `/fuel/i`,
+  `/(equipment|vehicle)/i`), not a third mappable Column Mapping field —
+  keeps the target field list at CLAUDE.md's exact 8 items while still
+  satisfying the combine business rule.
+- Emissions Dashboard's existence check reads already-fetched client state
+  (`entries.length`) rather than issuing a fresh query per tab view —
+  matches spec Section 15's open-question assumption ("on load only, not
+  live").
+- Tab content unmounts on switch (plain conditional render, no
+  tab-persistence layer) — not a stated requirement; kept simple over
+  preserving in-progress CSV-wizard/form state across a tab switch.
 
 ## Known issues
-- **Resolved this session, after deploy:** the first live deploy showed
-  "Could not load persisted data from Supabase" with zero network requests
-  and no console output. Root cause: `VITE_SUPABASE_ANON_KEY`, as entered
-  in the Netlify dashboard, had its `--` (double hyphen, inside the JWT
-  signature) silently converted to a single dash by macOS/browser smart-
-  punctuation on paste — an invalid header value that made the browser's
-  `fetch()` throw synchronously ("String contains non ISO-8859-1 code
-  point") before any request left the page, silently caught by the app's
-  error handling. Fixed by rewriting the env var via the Netlify API
-  directly (bypassing the browser text field entirely) rather than
-  re-pasting. Confirmed live afterward: Facility Reporting Period submit →
-  reload → still present.
-- This build session's sandbox blocked outbound HTTPS to `*.supabase.co`
-  and even `*.netlify.app` directly from the browser/Node (org egress
-  policy, confirmed via the agent-proxy status endpoint — not a code
-  defect). DB-layer testing used the Supabase MCP connection instead; live
-  diagnosis of the anon-key issue above was done collaboratively with the
-  builder's own browser DevTools.
-- Two Supabase projects unrelated to this build already existed in the org
-  before this session (`purepastures-ghg`, `acarras-1403's Project`, both
-  dated 2026-07-04) — neither was touched; cleanup is a builder decision,
-  not made here (D-14).
-- Spec revised to v7.0 on 2026-08-05 — CLAUDE.md regenerated by Project
-  Governor. DECISIONS.md is missing D-16 through D-19 (backfill owed,
-  see D-20's stub entry) — not a build blocker, noted for continuity.
+
+- **New, this session — priority for next session:** the live Netlify site
+  (`purepastures-ghg`, site id `7aebb2b1-88cb-4f04-9140-844c5e048381`,
+  `http://purepastures-ghg.netlify.app`) has `VITE_SUPABASE_URL`/
+  `VITE_SUPABASE_ANON_KEY` set to a **different, older Supabase project** —
+  also confusingly named `purepastures-ghg` (id `uioxedvoaqtijtrvzxzl`,
+  created 2026-07-04) — instead of the `purepastures` project (id
+  `ztkgbowwrlszbbfuhkid`) that `docs/supabase-setup.md` documents as this
+  build's actual schema. Confirmed via `list_tables` on both: the
+  mis-wired project has a completely different legacy dimensional schema
+  (`dim_scope`, `dim_category`, `dim_facility`, …) with **no**
+  `activity_data` or `facility_reporting_period` tables at all — so the
+  live site cannot load or save data as currently wired, regardless of any
+  code in this repo. This was not touched automatically (a production env
+  var change on a shared site) — flagged to the builder for confirmation.
+  Fix: in the Netlify dashboard (or via Netlify MCP), update both env vars
+  on the `purepastures-ghg` site to `https://ztkgbowwrlszbbfuhkid.supabase.co`
+  and the `purepastures` project's anon/publishable key.
+- The `purepastures` project (the correct one) now also contains three
+  tables outside this tool's schema — `ef_table`, `expected_matches`,
+  `emissions_results` (1 row) — almost certainly Tool B's own tables
+  landing in the shared project for the first time. Per CLAUDE.md Hard
+  Rules, left completely untouched; noted here for visibility only.
+- This session's sandbox again blocked outbound HTTPS to `*.supabase.co`
+  (org egress policy, confirmed via the agent-proxy status endpoint — not
+  a code defect, same limitation noted in session 4). See Current state's
+  Verification note for how this session's changes were verified instead.
+- Two Supabase projects outside this tool's canonical schema remain in the
+  org (carried from session 4): `purepastures-ghg` (id
+  `uioxedvoaqtijtrvzxzl` — now confirmed as what the live site is
+  mis-wired to, see above) and `acarras-1403's Project` (id
+  `pcjsoczuzfbniwqxgfji`, INACTIVE). Cleanup remains a builder decision.
 
 ## Notes for next session
-None.
+
+Fix the Netlify env var mismatch above first (it blocks everything else —
+the live site can't function until it points at the right Supabase
+project), then do the live acceptance-criteria pass for items 25–38.

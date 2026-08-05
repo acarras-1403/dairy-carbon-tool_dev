@@ -10,22 +10,20 @@ const COLUMNS = [
   { key: 'currency', label: 'Currency' },
 ]
 
-// Reflects every persisted Facility Reporting Period record (spec v5.0 —
-// no longer session-scoped); no edit/delete anywhere here, matching the RLS
-// policies (insert-only, no update/delete grant).
+// Reflects every persisted Facility Data record (spec v7.0 — tucked inside
+// the Facility Data modal's "Past facility data entries" Collapsible); no
+// edit/delete anywhere here, matching the RLS policies (insert-only, no
+// update/delete grant).
 export default function FacilityTable({ entries }) {
   function handleDownload() {
-    downloadCsv('purepastures-facility-reporting-period.csv', toCsv(COLUMNS, entries))
+    downloadCsv('purepastures-facility-data.csv', toCsv(COLUMNS, entries))
   }
 
   return (
-    <section className="card space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-deepblue">
-          Facility reporting period — all records ({entries.length})
-        </h2>
+    <div className="space-y-4">
+      <div className="flex justify-end">
         <button className="btn-accent" disabled={!entries.length} onClick={handleDownload}>
-          Download Facility Reporting Period CSV
+          Download Facility Data CSV
         </button>
       </div>
 
@@ -61,6 +59,6 @@ export default function FacilityTable({ entries }) {
           </table>
         </div>
       )}
-    </section>
+    </div>
   )
 }
