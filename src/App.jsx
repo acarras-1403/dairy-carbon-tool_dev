@@ -17,8 +17,14 @@ const TABS = [
 // update/delete anywhere in this frontend. Two top-level tabs only —
 // Facility Data and past-entry review live inside Activity Data Entry (a
 // modal and a tucked section, respectively), never as their own tabs.
+// Emissions Dashboard is listed first in the nav (spec Section 8) but is
+// NOT the default landing tab — once any activity_data exists, that tab
+// immediately navigates away to Tool B, so defaulting to it would bounce
+// every visitor off this tool before they could do anything. Activity Data
+// Entry (this tool's actual purpose) is the default; Emissions Dashboard
+// still redirects correctly when a visitor clicks it deliberately.
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const [activeTab, setActiveTab] = useState('entry')
   const [theme, setTheme] = useState(getInitialTheme)
 
   const [entries, setEntries] = useState([])
