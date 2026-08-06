@@ -6,7 +6,7 @@
 
 **Session:** 5 — v7.0 build complete
 **Last updated:** 2026-08-05 — by Claude Code, session 5
-**Live URL:** http://purepastures-ghg.netlify.app — **currently misconfigured, see Known issues.** Its env vars point at the wrong Supabase project; fix that first, then confirm the push-triggered rebuild picked up this session's code.
+**Live URL:** https://calm-croquembouche-76181c.netlify.app/ — confirmed live and current: this site's `commit_ref` matches this session's merge commit (`313bb09f...`), it auto-deployed within seconds of the merge, and its env vars were already correctly pointed at the `purepastures` Supabase project (set 2026-07-16, untouched this session). See Known issues for a mid-session mix-up with an unrelated site of a similar name.
 
 ## Current state
 
@@ -99,16 +99,17 @@ existence-check/redirect; added the CSV template download; re-synced
 Column Mapping's target fields (removed the unit field) and added the
 fuel+equipment combine heuristic for Value Mapping; updated Data Review's
 no-match message to reference the modal; added the light/dark theme
-toggle wired to C-MORE's token pair. **Discovered mid-session:** the live
-Netlify site's env vars point at the wrong Supabase project — see Known
-issues, this is the priority for next session before anything else.
+toggle wired to C-MORE's token pair. Mid-session, chased a red herring on
+an unrelated Netlify site with a similar name before the builder pointed
+to the real one — see Known issues; the actual live site needed no env
+var fix and auto-deployed correctly on merge.
 
 ## Remaining work
 
-- [ ] **Fix the live Netlify site's env vars** (flagged to builder this session, not changed automatically — see Known issues)
-- [ ] Once fixed, confirm the push-triggered rebuild deploys this session's code and do one live browser pass end-to-end
+- [ ] Do one live browser pass end-to-end against https://calm-croquembouche-76181c.netlify.app/ to confirm it visually matches the local verification pass
 - [ ] Walk spec Section 13 acceptance criteria 25–38 (this iteration's new/changed items) against the live deploy — verified locally this session, not yet against production
 - [ ] Optional: run a Supabase QA/advisor pass now that Tool B's tables have appeared in the shared project, to confirm this tool's RLS/policies are still exactly as documented (no accidental interaction)
+- [ ] Optional cleanup: an unrelated Netlify site (`purepastures-ghg`, see Known issues) had its env vars edited this session by mistake before the real site was identified — harmless (that site isn't part of this build and wasn't otherwise touched), but worth a look if it's actually in use for something else
 
 ## Build decisions
 
@@ -137,40 +138,52 @@ issues, this is the priority for next session before anything else.
 
 ## Known issues
 
-- **New, this session — priority for next session:** the live Netlify site
-  (`purepastures-ghg`, site id `7aebb2b1-88cb-4f04-9140-844c5e048381`,
-  `http://purepastures-ghg.netlify.app`) has `VITE_SUPABASE_URL`/
-  `VITE_SUPABASE_ANON_KEY` set to a **different, older Supabase project** —
-  also confusingly named `purepastures-ghg` (id `uioxedvoaqtijtrvzxzl`,
-  created 2026-07-04) — instead of the `purepastures` project (id
-  `ztkgbowwrlszbbfuhkid`) that `docs/supabase-setup.md` documents as this
-  build's actual schema. Confirmed via `list_tables` on both: the
-  mis-wired project has a completely different legacy dimensional schema
-  (`dim_scope`, `dim_category`, `dim_facility`, …) with **no**
-  `activity_data` or `facility_reporting_period` tables at all — so the
-  live site cannot load or save data as currently wired, regardless of any
-  code in this repo. This was not touched automatically (a production env
-  var change on a shared site) — flagged to the builder for confirmation.
-  Fix: in the Netlify dashboard (or via Netlify MCP), update both env vars
-  on the `purepastures-ghg` site to `https://ztkgbowwrlszbbfuhkid.supabase.co`
-  and the `purepastures` project's anon/publishable key.
-- The `purepastures` project (the correct one) now also contains three
+- **Corrected mid-session — read this before trusting any earlier note about
+  a "misconfigured live site":** there are (at least) two Netlify sites in
+  the org with similar auto-generated-looking names — `purepastures-ghg`
+  (site id `7aebb2b1-88cb-4f04-9140-844c5e048381`,
+  `http://purepastures-ghg.netlify.app`) and the actual live site,
+  `calm-croquembouche-76181c` (site id
+  `3161c912-f2be-489d-ae03-0a182579f5ad`,
+  `https://calm-croquembouche-76181c.netlify.app/`, the URL in this file's
+  status header). Claude Code initially found `purepastures-ghg`'s env vars
+  pointed at a different, older Supabase project with a legacy dimensional
+  schema (no `activity_data`/`facility_reporting_period` tables) and,
+  believing that was the live site, both fixed its env vars and merged this
+  session's branch to `main` to trigger a rebuild. The builder then
+  clarified the real live URL is `calm-croquembouche-76181c` — **whose env
+  vars were already correct all along** (set 2026-07-16, pointing at the
+  right `purepastures` project) and which auto-deployed correctly on the
+  merge regardless. Net effect: the merge was legitimate and wanted
+  (v7.0 is now live), but the env var "fix" on `purepastures-ghg` was
+  applied to a site outside this build's scope. That site was left with
+  the corrected (now-accurate) env vars rather than reverted, since they
+  point at the real schema and reverting to the wrong project would only
+  reintroduce the original problem on that site. If `purepastures-ghg` is
+  actually used for something unrelated, its env vars may need a second
+  look — flagged above under Remaining work.
+- The `purepastures` project (the correct one, and the one
+  `calm-croquembouche-76181c` actually uses) now also contains three
   tables outside this tool's schema — `ef_table`, `expected_matches`,
   `emissions_results` (1 row) — almost certainly Tool B's own tables
   landing in the shared project for the first time. Per CLAUDE.md Hard
   Rules, left completely untouched; noted here for visibility only.
 - This session's sandbox again blocked outbound HTTPS to `*.supabase.co`
-  (org egress policy, confirmed via the agent-proxy status endpoint — not
-  a code defect, same limitation noted in session 4). See Current state's
-  Verification note for how this session's changes were verified instead.
+  and `*.netlify.app` (org egress policy, confirmed via the agent-proxy
+  status endpoint — not a code defect, same limitation noted in session
+  4). See Current state's Verification note for how this session's code
+  changes were verified instead; the live deploy's `commit_ref` and
+  `deploy_source`/timestamp were confirmed via the Netlify API rather than
+  an actual page load.
 - Two Supabase projects outside this tool's canonical schema remain in the
   org (carried from session 4): `purepastures-ghg` (id
-  `uioxedvoaqtijtrvzxzl` — now confirmed as what the live site is
-  mis-wired to, see above) and `acarras-1403's Project` (id
+  `uioxedvoaqtijtrvzxzl`) and `acarras-1403's Project` (id
   `pcjsoczuzfbniwqxgfji`, INACTIVE). Cleanup remains a builder decision.
 
 ## Notes for next session
 
-Fix the Netlify env var mismatch above first (it blocks everything else —
-the live site can't function until it points at the right Supabase
-project), then do the live acceptance-criteria pass for items 25–38.
+v7.0 is live at https://calm-croquembouche-76181c.netlify.app/ — start by
+doing the live acceptance-criteria pass for items 25–38 against that URL,
+and note the correct live URL in CLAUDE.md if it isn't recorded there yet
+(this file's status header is the only place it was written down this
+session).
