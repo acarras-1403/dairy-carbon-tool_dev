@@ -1,6 +1,12 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+/* Tailwind v4 generates `dark:` off prefers-color-scheme by default — this
+   app ties dark mode to the `.dark` class (toggled by src/lib/theme.js),
+   not OS preference, so the variant has to be declared explicitly. Only a
+   couple of plain `dark:text-red-*` error-message spots use this variant;
+   every themed color below goes through the CSS custom properties instead. */
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* C-MORE v2 token pair (CLAUDE.md Brand hard rules). Neutrals lead in both
    themes; --accent is the only role that swaps identity (Deep Blue in
@@ -13,8 +19,8 @@
   --border: #e6e7ec;
   --ink: #1f2333;
   --slate: #5b6072;
-  /* rgb triplet (not hex) so Tailwind's `<alpha-value>` opacity modifiers
-     (bg-accent/5, ring-accent/30, …) work against a CSS-variable color. */
+  /* rgb triplet (not hex) so Tailwind's opacity modifiers (bg-accent/5,
+     ring-accent/30, …) work against a CSS-variable color. */
   --accent-rgb: 20 26 50; /* #141A32 Deep Blue */
   --accent-contrast: #fafafa;
 }
@@ -28,6 +34,25 @@
   --slate: #9aa0b4;
   --accent-rgb: 192 250 0; /* #C0FA00 Lime */
   --accent-contrast: #0f1220;
+}
+
+@theme {
+  --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+  --radius-card: 14px;
+
+  /* 1:1 translation of the old tailwind.config.js color tokens — same
+     names, same values, just expressed as v4's @theme variables instead of
+     a JS config object. Brand *values* don't change here (see the rebrand
+     pass); this is a pure build-tooling migration. */
+  --color-offwhite: var(--bg);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-slate: var(--slate);
+  --color-line: var(--border);
+  --color-accent: rgb(var(--accent-rgb));
+  --color-accentContrast: var(--accent-contrast);
+  --color-deepblue: #141a32;
+  --color-lime: #c0fa00;
 }
 
 html,
