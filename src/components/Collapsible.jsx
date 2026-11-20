@@ -16,7 +16,7 @@ export default function Collapsible({ title, count, children }) {
         className="flex w-full items-center justify-between text-left"
         aria-expanded={open}
       >
-        <h2 className="text-lg font-semibold text-accent">
+        <h2 className="font-serif text-lg font-semibold text-accent">
           {title}
           {typeof count === 'number' ? ` (${count})` : ''}
         </h2>

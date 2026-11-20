@@ -27,7 +27,7 @@ export default function FacilityModal({ open, blocked, prefill, facilityEntries,
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
-          <h2 className="text-xl font-bold text-accent">Facility Data</h2>
+          <h2 className="font-serif text-xl font-bold text-accent">Facility Data</h2>
           <button
             type="button"
             onClick={onClose}
@@ -47,7 +47,7 @@ export default function FacilityModal({ open, blocked, prefill, facilityEntries,
         </p>
 
         {blocked && (
-          <p className="rounded-md bg-lime/20 px-3 py-2 text-sm font-medium text-ink" role="alert">
+          <p className="rounded-md bg-surfaceAlt px-3 py-2 text-sm font-medium text-ink" role="alert">
             No facility data on file for {facilityName ?? 'this facility'} in{' '}
             {prefill?.reporting_year ?? 'this year'}. Add it below to continue.
           </p>

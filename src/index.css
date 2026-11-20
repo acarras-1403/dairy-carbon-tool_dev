@@ -1,58 +1,74 @@
-@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
-/* Tailwind v4 generates `dark:` off prefers-color-scheme by default — this
-   app ties dark mode to the `.dark` class (toggled by src/lib/theme.js),
-   not OS preference, so the variant has to be declared explicitly. Only a
-   couple of plain `dark:text-red-*` error-message spots use this variant;
-   every themed color below goes through the CSS custom properties instead. */
-@custom-variant dark (&:where(.dark, .dark *));
+/* Brand: Andrea Carrascosa's personal system (Granate/Sage), approved +
+   derived sections per brand-system.md (uploaded 2026-11-20; proven in the
+   LCA-Studio build). Replaces the placeholder "C-MORE" brand this tool
+   used before — C-MORE was never an official file, just a stand-in (see
+   DECISIONS.md for the replacement entry).
 
-/* C-MORE v2 token pair (CLAUDE.md Brand hard rules). Neutrals lead in both
-   themes; --accent is the only role that swaps identity (Deep Blue in
-   light, Lime in dark) — every component class below reads these
-   variables instead of hardcoding a theme's colors. */
+   Tailwind v4 generates `dark:` off prefers-color-scheme by default — this
+   app ties dark mode to a `data-theme="dark"` attribute on <html>
+   (src/lib/theme.js), per the brand doc's own convention, not OS
+   preference or a class — so the variant is declared explicitly below.
+   Only a couple of plain `dark:text-red-*` error-message spots use this
+   variant; every themed color goes through the CSS custom properties
+   instead. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
 :root {
   color-scheme: light;
-  --bg: #fafafa;
+  --bg: #f7f5f2;
   --surface: #ffffff;
-  --border: #e6e7ec;
-  --ink: #1f2333;
-  --slate: #5b6072;
-  /* rgb triplet (not hex) so Tailwind's opacity modifiers (bg-accent/5,
+  --surface-alt: #e6ebe1;
+  --border: #d9d4cc;
+  --ink: #1f1d1b;
+  /* Brand doc splits secondary text into text-muted (sage-dark) and
+     text-meta (warm-grey) — collapsed to one tier here (confirmed this
+     session) since every existing component only ever had one. */
+  --slate: #5e6e52;
+  /* rgb triplets (not hex) so Tailwind's opacity modifiers (bg-accent/5,
      ring-accent/30, …) work against a CSS-variable color. */
-  --accent-rgb: 20 26 50; /* #141A32 Deep Blue */
-  --accent-contrast: #fafafa;
+  --accent-rgb: 122 31 43; /* #7A1F2B Granate — "the only action colour" */
+  --accent-contrast: #ffffff;
+  /* success/warning/danger aren't in the brand doc — derived candidates,
+     contrast-checked with the doc's own script (DECISIONS.md), pending
+     final visual sign-off once built. */
+  --success-rgb: 63 107 58; /* #3F6B3A */
+  --warning-rgb: 138 90 0; /* #8A5A00 */
+  --danger-rgb: 163 58 46; /* #A33A2E */
 }
 
-:root.dark {
+:root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #0f1220;
-  --surface: #171b30;
-  --border: #2a2f45;
-  --ink: #f2f3f7;
-  --slate: #9aa0b4;
-  --accent-rgb: 192 250 0; /* #C0FA00 Lime */
-  --accent-contrast: #0f1220;
+  --bg: #161513;
+  --surface: #221f1d;
+  --surface-alt: #2b2724;
+  --border: #3a3633;
+  --ink: #f2efea;
+  --slate: #c3cdb6;
+  --accent-rgb: 212 113 127; /* #D4717F — lightened granate, still granate family */
+  --accent-contrast: #1f1d1b;
+  --success-rgb: 143 199 138; /* #8FC78A */
+  --warning-rgb: 232 182 92; /* #E8B65C */
+  --danger-rgb: 232 132 122; /* #E8847A */
 }
 
 @theme {
-  --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif;
-  --radius-card: 14px;
+  --font-sans: 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Source Serif 4', Georgia, serif;
+  --radius-card: 7px;
 
-  /* 1:1 translation of the old tailwind.config.js color tokens — same
-     names, same values, just expressed as v4's @theme variables instead of
-     a JS config object. Brand *values* don't change here (see the rebrand
-     pass); this is a pure build-tooling migration. */
   --color-offwhite: var(--bg);
   --color-surface: var(--surface);
+  --color-surfaceAlt: var(--surface-alt);
   --color-ink: var(--ink);
   --color-slate: var(--slate);
   --color-line: var(--border);
   --color-accent: rgb(var(--accent-rgb));
   --color-accentContrast: var(--accent-contrast);
-  --color-deepblue: #141a32;
-  --color-lime: #c0fa00;
+  --color-success: rgb(var(--success-rgb));
+  --color-warning: rgb(var(--warning-rgb));
+  --color-danger: rgb(var(--danger-rgb));
 }
 
 html,
@@ -65,7 +81,7 @@ body {
   margin: 0;
   background-color: var(--bg);
   color: var(--ink);
-  font-family: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
@@ -76,10 +92,17 @@ body {
       text-sm font-semibold text-accentContrast transition hover:opacity-90
       focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50;
   }
+  /* Granate is "the only action colour" (brand hard rule) — no second
+     filled button color. This is the bordered/secondary treatment used for
+     lower-emphasis actions (CSV exports, etc.), same role the old
+     lime-filled .btn-accent served, same name kept for Phase 2's class
+     list (ported Tool B components already call this role .btn-secondary —
+     reconciled in Phase 3). */
   .btn-accent {
-    @apply inline-flex items-center justify-center rounded-md bg-lime px-4 py-2
-      text-sm font-semibold text-deepblue transition hover:brightness-95
-      focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50;
+    @apply inline-flex items-center justify-center rounded-md border border-line
+      bg-surface px-4 py-2 text-sm font-semibold text-accent transition
+      hover:bg-accent/5 focus:outline-none focus:ring-2 focus:ring-accent/30
+      disabled:opacity-50;
   }
   .btn-ghost {
     @apply inline-flex items-center justify-center rounded-md border border-line

@@ -24,7 +24,7 @@ export default function ActivityDataEntry({
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <h1 className="text-xl font-bold text-accent">Activity Data Entry</h1>
+        <h1 className="font-serif text-xl font-bold text-accent">Activity Data Entry</h1>
         <p className="text-sm text-slate">
           Log raw GHG activity data — manually or via bulk CSV. Activity data
           is what the tool converts and, later, uses to calculate emissions;

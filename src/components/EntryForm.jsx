@@ -139,7 +139,7 @@ export default function EntryForm({ facilityPeriods, onAdd, onBlocked }) {
 
   return (
     <form onSubmit={handleSubmit} className="card space-y-4">
-      <h2 className="text-lg font-semibold text-accent">Log activity data</h2>
+      <h2 className="font-serif text-lg font-semibold text-accent">Log activity data</h2>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>

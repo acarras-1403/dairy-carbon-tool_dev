@@ -111,7 +111,7 @@ export default function App() {
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="inline-block h-4 w-4 rounded-sm bg-accent" aria-hidden />
-            <span className="text-base font-bold text-accent">PurePastures GHG</span>
+            <span className="font-serif text-base font-bold text-accent">PurePastures GHG</span>
           </div>
           <div className="flex items-center gap-2">
             <nav className="flex items-center gap-2 text-sm font-medium">

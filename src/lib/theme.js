@@ -1,8 +1,8 @@
-// Light/dark theme (spec v7.0 Section 8/10) — persisted to localStorage,
-// falls back to the OS preference on first visit. Applies by toggling the
-// `dark` class on <html>; every color token in tailwind.config.js/index.css
-// reads a CSS variable that swaps off that class, so this is the single
-// place theme state lives.
+// Light/dark theme — persisted to localStorage, falls back to the OS
+// preference on first visit. Applies by setting `data-theme` on <html>
+// (brand-system.md's convention); every color token in src/index.css reads
+// a CSS variable that swaps off that attribute, so this is the single place
+// theme state lives.
 const STORAGE_KEY = 'purepastures-theme'
 
 export function getInitialTheme() {
@@ -12,6 +12,6 @@ export function getInitialTheme() {
 }
 
 export function applyTheme(theme) {
-  document.documentElement.classList.toggle('dark', theme === 'dark')
+  document.documentElement.setAttribute('data-theme', theme)
   window.localStorage.setItem(STORAGE_KEY, theme)
 }

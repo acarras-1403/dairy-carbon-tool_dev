@@ -264,7 +264,7 @@ export default function DataReview({ rows, facilityPeriods, onPromote, onDiscard
 
   return (
     <section className="card space-y-4">
-      <h2 className="text-lg font-semibold text-accent">
+      <h2 className="font-serif text-lg font-semibold text-accent">
         Data Review — needs attention ({rows.length})
       </h2>
       <p className="text-sm text-slate">

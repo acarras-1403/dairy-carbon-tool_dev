@@ -72,12 +72,14 @@ RLS: facility_reporting_period — anon: select + insert only, no update/delete.
 - Stack: this tool shares the purepastures Supabase project with the emissions dashboard tool. Per docs/supabase-setup.md, no tables beyond the two listed above currently exist in this project. If the dashboard tool's own tables appear there later, treat them as protected: no schema changes, no RLS changes from this codebase.
 
 ## Brand
-Brand is governed by the c-more skill at .claude/skills/c-more/SKILL.md. Invoke it for any UI or visual work.
+Brand is governed by the granate-sage skill at .claude/skills/granate-sage/SKILL.md. Invoke it for any UI or visual work. Replaces the retired placeholder "C-MORE" brand (never an official file, just a stand-in — see DECISIONS.md).
 Hard rules that hold even if the skill is not loaded:
-- Background: #FAFAFA (light) / #0F1220 (dark) — never white or Tailwind gray defaults
-- Accent (identification): #141A32 Deep Blue in light mode, #C0FA00 Lime in dark mode — never Tailwind blue defaults
-- Font: Figtree for all text
-- Neutrals lead in both themes. A light/dark toggle in the top bar is required, not optional.
+- Background: #F7F5F2 (light) / #161513 (dark) — never white or Tailwind gray defaults
+- Accent/action (identification): #7A1F2B Granate in light mode, #D4717F (lightened Granate) in dark mode — the only action colour, never a second filled-button colour, never Tailwind blue defaults
+- Sage #8A9A7B is decorative only (lines, icons, section backgrounds) — never text, never a button fill
+- Font: Source Serif 4 (600, headings) + Source Sans 3 (400/600, body), both self-hosted via @fontsource — never a Google Fonts CDN link
+- One radius everywhere: 7px
+- Neutrals lead in both themes. A light/dark toggle in the top bar is required, not optional — applies via `data-theme="dark"` on `<html>`, not a class.
 
 ## Business Rules
 - Two top-level tabs only: Emissions Dashboard (first), Activity Data Entry (second). No separate Facility Data tab/page, no separate Records tabs.
@@ -96,6 +98,6 @@ Out of scope — do not build:
 Read before building the related part:
 - docs/product-spec.md — full module specs, UI sections, logic, arm detail
 - docs/supabase-setup.md — schema source of truth (exists — read first)
-- .claude/skills/c-more/SKILL.md — full brand system
-File locations: CLAUDE.md and PROGRESS.md at root only; docs/ holds product-spec.md and supabase-setup.md; brand skill at .claude/skills/c-more/.
+- .claude/skills/granate-sage/SKILL.md — full brand system
+File locations: CLAUDE.md and PROGRESS.md at root only; docs/ holds product-spec.md and supabase-setup.md; brand skill at .claude/skills/granate-sage/.
 PROGRESS.md in the root is read at every session start per the Session Protocol.

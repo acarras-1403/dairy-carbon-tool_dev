@@ -158,7 +158,7 @@ export default function CsvImport({ facilityPeriods, onImportComplete }) {
   return (
     <section className="card space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-accent">Bulk CSV import</h2>
+        <h2 className="font-serif text-lg font-semibold text-accent">Bulk CSV import</h2>
         <p className="text-sm text-slate">
           Upload raw records, map columns and values, and flagged rows land in
           Data Review below.
