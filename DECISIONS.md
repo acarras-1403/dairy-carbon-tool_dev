@@ -350,3 +350,22 @@ No entries exist in this file for D-16, D-17, D-18, or D-19. `C-MORE-brand-style
 - **Scope creep check:** in scope — directly requested and confirmed across multiple mockup review rounds before being logged here
 - **Spec version bump:** yes → v7.0
 - **Tags:** #g-3 #ui-restructure #facility-data-modal #records-tucked #dashboard-emptystate #d12-boundary #d13-reconfirmed
+
+---
+
+## D-22: Reverse D-12 — merge Tool A (this tool) and Tool B (Emissions Dashboard) into one tool
+
+- **Date:** 2026-11-20
+- **Goal:** G-3
+- **Spec section affected:** none yet — no spec exists for the merged tool at time of logging; this entry records the stack-level decision from Tool A's side, ahead of the build. Whichever session performs the actual merge should write (or revise) a product-spec.md for the combined tool and bump accordingly.
+- **Status:** adopted
+- **Trigger:** Andrea requested a handoff package of this tool so it can be brought into the Emissions Dashboard project and the two united into one tool. Asked directly whether this was a deliberate reversal of D-12 (not an implicit drift discovered mid-build, the failure mode D-12 itself was partly guarding against), Andrea confirmed yes.
+- **Options considered:**
+  1. Leave D-12 standing — keep Tool A and Tool B as separate tools/repos/specs, Emissions Dashboard tab here staying a thin existence-check + redirect (current v7.0 behavior).
+  2. Reverse D-12 — bring Tool A's source into the Emissions Dashboard project (or vice versa) and build one combined frontend, presumably against the same shared `purepastures` Supabase project both already use.
+- **Chosen:** Option 2
+- **Reasoning:** D-12 was rejected on a "no new requirement actually demands it" basis at the time. Andrea has since decided the two tools should become one, confirmed as a deliberate call rather than scope drift — the condition D-12's reasoning was keyed on no longer holds, by the project's own explicit decision rather than by default.
+- **Limitation / what this doesn't solve:** This entry doesn't design the merge — it only records that one is now intended, so a future reader doesn't find Tool A's Emissions Dashboard tab (built as a thin redirect specifically to avoid re-opening D-12, per D-21) and Tool B's eventual real dashboard content coexisting without knowing why that boundary moved. D-13's hard-block validation, the no-update/delete RLS posture, GDPR consent on `reviewer`, and the shared-schema protection rule (this tool's Hard Rules: don't touch Tool B's tables) all still need to survive whatever the merged tool's architecture turns out to be — none of that is re-decided here. See `HANDOFF.md` (delivered to Andrea alongside this tool's source as a zip) for the schema/business-rule detail a merge needs to preserve.
+- **Scope creep check:** in scope — explicitly requested and confirmed deliberate, not drift
+- **Spec version bump:** no — see Spec section affected above
+- **Tags:** #g-3 #tool-b #stack-pattern #d12-reversal #merge

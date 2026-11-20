@@ -182,8 +182,20 @@ var fix and auto-deployed correctly on merge.
 
 ## Notes for next session
 
-v7.0 is live at https://calm-croquembouche-76181c.netlify.app/ — start by
-doing the live acceptance-criteria pass for items 25–38 against that URL,
-and note the correct live URL in CLAUDE.md if it isn't recorded there yet
-(this file's status header is the only place it was written down this
-session).
+**Reprioritized after this file was last written at session 5's save
+point:** Andrea has decided, deliberately, to merge this tool with the
+Emissions Dashboard tool (Tool B) into one combined tool — see
+`DECISIONS.md` D-22, which reverses D-12's earlier rejection of exactly
+this. A handoff package (this tool's source as a zip + a `HANDOFF.md`
+summarizing the shared schema, business rules, and brand theming a merge
+needs to preserve) was sent directly to Andrea, not committed to this
+repo. If a future session here picks this up: read D-22 and D-12 first,
+and expect the Emissions Dashboard tab's thin redirect (built this
+session specifically to avoid re-opening D-12 — see D-21) to be exactly
+the piece a real merge replaces.
+
+Still open from session 5, if not already done elsewhere: v7.0 is live at
+https://calm-croquembouche-76181c.netlify.app/ — do the live
+acceptance-criteria pass for items 25–38 against that URL, and note the
+correct live URL in CLAUDE.md if it isn't recorded there yet (this file's
+status header is the only place it was written down session 5).
