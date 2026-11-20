@@ -22,7 +22,7 @@ export default function ActivityDataEntry({
   onBlocked,
 }) {
   return (
-    <div className="space-y-8">
+    <div className="mx-auto max-w-4xl space-y-8">
       <div className="space-y-2">
         <h1 className="font-serif text-xl font-bold text-accent">Activity Data Entry</h1>
         <p className="text-sm text-slate">

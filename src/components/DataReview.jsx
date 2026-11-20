@@ -97,7 +97,7 @@ function ReviewRow({ row, facilityPeriods, onPromote, onDiscard, onOpenFacilityM
 
   return (
     <div className="rounded-md border border-line p-4 space-y-3">
-      <p className="text-sm font-medium text-red-700 dark:text-red-400">{row.issues.join('; ')}</p>
+      <p className="text-sm font-medium text-danger">{row.issues.join('; ')}</p>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
@@ -231,7 +231,7 @@ function ReviewRow({ row, facilityPeriods, onPromote, onDiscard, onOpenFacilityM
         </div>
       </div>
 
-      {promoteError && <p className="text-sm text-red-600 dark:text-red-400">{promoteError}</p>}
+      {promoteError && <p className="text-sm text-danger">{promoteError}</p>}
 
       <div className="flex flex-wrap justify-end gap-2">
         <button

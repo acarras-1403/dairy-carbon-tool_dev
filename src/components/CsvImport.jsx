@@ -165,7 +165,7 @@ export default function CsvImport({ facilityPeriods, onImportComplete }) {
         </p>
       </div>
 
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       {step === 'upload' && (
         <div className="space-y-3">

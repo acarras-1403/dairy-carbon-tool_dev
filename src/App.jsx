@@ -135,9 +135,9 @@ export default function App() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl space-y-8 px-4 py-8">
+      <main className="space-y-8 px-4 py-8">
         {loadError && (
-          <p className="card text-sm text-red-700 dark:text-red-400" role="alert">
+          <p className="card mx-auto max-w-4xl text-sm text-danger" role="alert">
             {loadError}
           </p>
         )}

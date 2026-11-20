@@ -22,7 +22,7 @@ export default function FacilityTable({ entries }) {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <button className="btn-accent" disabled={!entries.length} onClick={handleDownload}>
+        <button className="btn-secondary" disabled={!entries.length} onClick={handleDownload}>
           Download Facility Data CSV
         </button>
       </div>

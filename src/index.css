@@ -36,6 +36,17 @@
   --success-rgb: 63 107 58; /* #3F6B3A */
   --warning-rgb: 138 90 0; /* #8A5A00 */
   --danger-rgb: 163 58 46; /* #A33A2E */
+  /* Theme-invariant "inverted" chip — tooltips and table sub-headers stay a
+     dark pill with light text regardless of page theme (ported from Tool B). */
+  --surface-strong: #1f1d1b;
+  --on-surface-strong: #f7f5f2;
+  /* Brand doc's 5-step categorical scale (granate -> sage, strictly
+     increasing lightness) — used by the emissions diagram/legend. */
+  --cat-slot-0: #7a1f2b;
+  --cat-slot-1: #944229;
+  --cat-slot-2: #9f5f2e;
+  --cat-slot-3: #b59345;
+  --cat-slot-4: #a7bf6f;
 }
 
 :root[data-theme='dark'] {
@@ -51,16 +62,26 @@
   --success-rgb: 143 199 138; /* #8FC78A */
   --warning-rgb: 232 182 92; /* #E8B65C */
   --danger-rgb: 232 132 122; /* #E8847A */
+  --surface-strong: #0d0c0b;
+  --on-surface-strong: #f7f5f2;
+  --cat-slot-0: #d4717f;
+  --cat-slot-1: #d08a5e;
+  --cat-slot-2: #c9a05a;
+  --cat-slot-3: #b4be72;
+  --cat-slot-4: #cbd6a5;
 }
 
 @theme {
   --font-sans: 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
   --font-serif: 'Source Serif 4', Georgia, serif;
+  --font-data: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
   --radius-card: 7px;
 
   --color-offwhite: var(--bg);
   --color-surface: var(--surface);
   --color-surfaceAlt: var(--surface-alt);
+  --color-surface-strong: var(--surface-strong);
+  --color-on-surface-strong: var(--on-surface-strong);
   --color-ink: var(--ink);
   --color-slate: var(--slate);
   --color-line: var(--border);
@@ -69,6 +90,10 @@
   --color-success: rgb(var(--success-rgb));
   --color-warning: rgb(var(--warning-rgb));
   --color-danger: rgb(var(--danger-rgb));
+  /* Fixed one-off, ported as-is from Tool B — never themed. Used only by
+     the run-rate forecast's suppressed-months banner. Pending builder
+     sign-off on whether it stays its own color or folds into `warning`. */
+  --color-serious: #ec835a;
 }
 
 html,
@@ -93,12 +118,11 @@ body {
       focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50;
   }
   /* Granate is "the only action colour" (brand hard rule) — no second
-     filled button color. This is the bordered/secondary treatment used for
-     lower-emphasis actions (CSV exports, etc.), same role the old
-     lime-filled .btn-accent served, same name kept for Phase 2's class
-     list (ported Tool B components already call this role .btn-secondary —
-     reconciled in Phase 3). */
-  .btn-accent {
+     filled button color. Bordered/outlined treatment for lower-emphasis
+     actions (CSV/PDF exports, etc.) — Tool A's pre-merge name (.btn-accent)
+     and Tool B's (.btn-secondary) both pointed at this same role; this is
+     now the one name both halves of the merged app use. */
+  .btn-secondary {
     @apply inline-flex items-center justify-center rounded-md border border-line
       bg-surface px-4 py-2 text-sm font-semibold text-accent transition
       hover:bg-accent/5 focus:outline-none focus:ring-2 focus:ring-accent/30
@@ -120,4 +144,15 @@ body {
   .card {
     @apply rounded-card border border-line bg-surface p-6 shadow-sm;
   }
+  /* Monospace, tabular-figures face for numeric table values (brand doc's
+     "data face" rule) — ported from Tool B, now used by both halves. */
+  .data-face {
+    font-family: var(--font-data);
+    font-variant-numeric: tabular-nums;
+  }
+  .cat-slot-0 { background-color: var(--cat-slot-0); }
+  .cat-slot-1 { background-color: var(--cat-slot-1); }
+  .cat-slot-2 { background-color: var(--cat-slot-2); }
+  .cat-slot-3 { background-color: var(--cat-slot-3); }
+  .cat-slot-4 { background-color: var(--cat-slot-4); }
 }
