@@ -369,3 +369,47 @@ No entries exist in this file for D-16, D-17, D-18, or D-19. `C-MORE-brand-style
 - **Scope creep check:** in scope — explicitly requested and confirmed deliberate, not drift
 - **Spec version bump:** no — see Spec section affected above
 - **Tags:** #g-3 #tool-b #stack-pattern #d12-reversal #merge
+
+---
+
+## D-23: Upgrade stack to React 19 / Vite 8 / Tailwind v4 to execute the D-22 merge
+
+- **Date:** 2026-11-20
+- **Goal:** G-3
+- **Spec section affected:** none — build-tooling decision, not a product-facing spec change
+- **Status:** adopted
+- **Trigger:** Executing D-22's merge requires one codebase. Tool A (this repo) was on React 18 / Vite 5 / Tailwind v3 (JS config); Tool B was already on React 19 / Vite 8 / Tailwind v4 (CSS-first `@theme` config, no `tailwind.config.js`) — two different Tailwind generations can't coexist in one build.
+- **Options considered:**
+  1. Upgrade Tool A's stack to match Tool B's (newer).
+  2. Downgrade/backport Tool B's components to Tool A's older stack.
+  3. Keep both stacks running side by side somehow (e.g. an iframe or micro-frontend boundary).
+- **Chosen:** Option 1
+- **Reasoning:** Tool A's component surface was small and had zero inline hex/arbitrary-value classes anywhere (confirmed by a full-repo exploration pass) — a clean, low-risk mechanical migration. Tool B's components are the heavier, more complex half (calculation engine, matching, forecast, PDF/CSV export, several chart/table components) and already written against React 19/Tailwind v4 idioms; porting those down to older APIs was judged higher-risk and more work than porting Tool A's few, simple components up. Option 3 would preserve D-12's separation in substance while nominally satisfying D-22's reversal, which isn't what was asked for.
+- **Limitation / what this doesn't solve:** This is a pure build-tooling migration — it does not by itself port any of Tool B's functionality in (see D-22, Phase 3 in PROGRESS.md for that). The migration was done in its own save point specifically so it could be verified as zero visual/behavioral change before the rebrand (D-24) and the actual component port landed on top of it.
+- **Scope creep check:** in scope — a necessary precondition of the explicitly-requested D-22 merge, not an unrelated upgrade
+- **Spec version bump:** no
+- **Tags:** #g-3 #merge #stack-upgrade #tailwind-v4 #react-19
+
+---
+
+## D-24: Replace the placeholder "C-MORE" brand with the Granate/Sage personal brand system
+
+- **Date:** 2026-11-20
+- **Goal:** G-3
+- **Spec section affected:** none — this tool never had an official brand spec section; "C-MORE" was always a stand-in (see the original `.claude/skills/c-more/SKILL.md`, which said so explicitly)
+- **Status:** adopted
+- **Trigger:** Andrea uploaded `brand-system.md` — a real, accessibility-checked personal brand (Granate `#7A1F2B` / Sage `#8A9A7B`, Source Serif 4 + Source Sans 3, full light/dark token pairs, a categorical color scale, and a contrast-check script), already proven in the `LCA-Studio` build — and asked for a brand redesign alongside the D-22 merge.
+- **Options considered:**
+  1. Keep C-MORE, do the merge without touching branding.
+  2. Replace C-MORE with the uploaded Granate/Sage system across both halves of the merged tool.
+- **Chosen:** Option 2
+- **Reasoning:** C-MORE was never an approved brand to begin with — it was explicitly documented as a placeholder stand-in from the tool's very first build session. Andrea provided a real, already-proven brand and asked for it. There was no reason to preserve a placeholder once a real system existed.
+- **Gaps in the source file, resolved this session (confirmed by Andrea, not assumed):**
+  - `success`/`warning`/`danger` status tokens don't exist in the brand doc (needed for the Emissions Dashboard's confidence swatches and validation pills, ported in D-22/Phase 3) — Claude Code derived candidates, contrast-checked with the brand doc's own luminance script: success light `#3F6B3A` (5.72:1 on page bg) / dark `#8FC78A` (9.30:1); warning light `#8A5A00` (5.45:1) / dark `#E8B65C` (9.80:1); danger light `#A33A2E` (6.03:1) / dark `#E8847A` (6.96:1). **Explicitly flagged as a proposal, not yet visually confirmed by Andrea** — treat as provisional (see PROGRESS.md Remaining work).
+  - The brand doc splits secondary text into `text-muted` (sage-dark) and `text-meta` (warm-grey); both tools only ever had one secondary-text tier. Andrea confirmed: collapse to one (`slate`, mapped to the sage-dark value).
+  - The brand doc specifies one 7px radius everywhere; this tool's cards were 14px. Andrea confirmed: adopt 7px, a deliberate visible change.
+  - The brand is explicit that Granate is "the only action colour" — no second filled-button color exists in it, unlike the old brand's lime-filled secondary button. Resolved by making the second button role (`.btn-secondary`, formerly also `.btn-accent`) a bordered/outlined treatment instead of a second fill color.
+- **Limitation / what this doesn't solve:** The derived status-color palette is Claude Code's proposal, not an approved addition to Andrea's brand system the way the rest of this file is — a future session should get explicit sign-off and update this entry (or log a new one) once that happens. Dark mode's mechanism also changed as part of this (a `data-theme="dark"` attribute instead of a `.dark` class, per the brand doc's own convention) — logged here rather than as a separate decision since it's inseparable from adopting the brand doc's conventions wholesale.
+- **Scope creep check:** in scope — explicitly requested
+- **Spec version bump:** no
+- **Tags:** #g-3 #brand #rebrand #granate-sage #c-more-retired #accessibility

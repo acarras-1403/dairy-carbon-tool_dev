@@ -1,201 +1,154 @@
-# PROGRESS — PurePastures GHG Activity Data Entry Tool (MVP)
+# PROGRESS — PurePastures GHG Tool
 
 > Claude Code: read this file at the start of every session, before touching
 > anything. Update it at every save point. Replace content — do not append.
 > History lives in git.
 
-**Session:** 5 — v7.0 build complete
-**Last updated:** 2026-08-05 — by Claude Code, session 5
-**Live URL:** https://calm-croquembouche-76181c.netlify.app/ — confirmed live and current: this site's `commit_ref` matches this session's merge commit (`313bb09f...`), it auto-deployed within seconds of the merge, and its env vars were already correctly pointed at the `purepastures` Supabase project (set 2026-07-16, untouched this session). See Known issues for a mid-session mix-up with an unrelated site of a similar name.
+**Session:** 6 — Tool A/Tool B merge, Phases 1–4 of 4 complete
+**Last updated:** 2026-11-20 — by Claude Code, session 6
+**Live URL:** https://calm-croquembouche-76181c.netlify.app/ — not yet redeployed with this session's work; still serving the pre-merge v7.0 build as of this save point. See Remaining work.
 
 ## Current state
 
-Tool matches product-spec.md v7.0. Navigation is down to two top-level tabs
-— **Emissions Dashboard** (first) and **Activity Data Entry** (second) —
-replacing v6.0's four-tab layout. Facility Reporting Period ("Facility
-Data" in the UI; table/columns unchanged) is no longer a page or step: it's
-`FacilityModal.jsx`, opened via a button in Activity Data Entry or
-automatically by D-13's blocking validation (still a hard block, only the
-redirect target changed — modal, not a page). Both v6.0 Records tabs are
-gone; past entries live in collapsed-by-default `Collapsible.jsx` sections
-— one at the bottom of Activity Data Entry, one inside the Facility Data
-modal.
+This tool is now the merged home for what were two separate tools/repos:
+**Activity Data Entry** (this repo, "Tool A") and **Emissions Dashboard**
+("Tool B", `carbon_dashboard_toolb_dev`) — merged per `DECISIONS.md`
+**D-22**, a deliberate reversal of **D-12**'s earlier rejection of exactly
+this. Both halves already shared the `purepastures` Supabase project; no
+schema or RLS changed this session — this was a frontend/build-level merge
+plus a full rebrand.
 
-New components this session: `EmissionsDashboard.jsx` (existence check
-against already-fetched `entries` — no data → local empty state with a
-tab-switch button; data exists → `window.location.href` to the live Tool B
-URL, `https://ghgdashboarddev.netlify.app/`, never rendering its content
-locally, per D-12), `ActivityDataEntry.jsx` (assembles intro copy, the
-Facility Data button row, bulk import, Data Review, manual entry, and the
-tucked past-entries section in the spec's exact order), `FacilityModal.jsx`,
-`Collapsible.jsx`, `ThemeToggle.jsx`.
+Four phases, each its own commit/save point on `claude/tool-build-njvj7x`:
 
-Theming: `src/lib/theme.js` persists light/dark to `localStorage` (falls
-back to OS preference) and toggles a `dark` class on `<html>`. Every brand
-token (`offwhite`/`surface`/`ink`/`slate`/`line`/`accent`) is a Tailwind
-color reading a CSS custom property (`src/index.css`), so the same class
-names swap per theme — including the accent **role** swap (Deep Blue
-`#141A32` in light, Lime `#C0FA00` in dark) — without `dark:` duplication
-everywhere. `--accent` is stored as an RGB triplet (`--accent-rgb`) rather
-than a hex string specifically so Tailwind's opacity modifiers
-(`bg-accent/5`, `ring-accent/30`) resolve — a plain hex-in-a-variable broke
-`@apply` in `index.css` (`tailwind.config.js` uses
-`rgb(var(--accent-rgb) / <alpha-value>)`).
+**Phase 1 — stack upgrade.** React 18→19, Vite 5→8, Tailwind v3→v4
+(CSS-first `@theme` config via `@tailwindcss/vite`, `tailwind.config.js`
+and `postcss.config.js` both deleted). Pure tooling migration — verified
+zero visual/behavioral change before moving on.
 
-Manual entry form (`EntryForm.jsx`) already had Evidence link, Reviewer,
-the locked unit indicator, and the GDPR checkbox from session 4 — v7.0 only
-changed its blocked-submit path to open the modal (`onBlocked`) instead of
-scrolling to a since-removed Step 1 section.
+**Phase 2 — brand replacement.** Swapped the placeholder "C-MORE" brand
+(Deep Blue/Lime, Figtree — never an official file, just a stand-in) for
+Andrea Carrascosa's real, accessibility-checked personal brand system —
+Granate `#7A1F2B` (the only action colour) / Sage `#8A9A7B` (decorative
+only), Source Serif 4 (headings) + Source Sans 3 (body) self-hosted via
+`@fontsource`, 7px radius everywhere, dark mode via a `data-theme="dark"`
+attribute on `<html>` (was a `.dark` class). New skill at
+`.claude/skills/granate-sage/` replaces `.claude/skills/c-more/`, with the
+full source brand doc alongside it as `SOURCE-brand-system.md`.
 
-CSV import (`importRows.js`): `MAPPABLE_FIELDS` re-synced to CLAUDE.md's
-exact 7 target keys (facility, source, purchase_date, activity value, data
-quality, evidence link, reviewer — notes still folds in automatically) by
-**removing** the old `activity_data_unit_raw` mappable field, not just
-relabeling it — unit is now always derived from the resolved
-`emission_source` for CSV rows too, matching the manual-entry lock exactly.
-`lookups.js` gained `resolveSourceFromFuelAndEquipment()`: a keyword
-heuristic (fuel word + mobile-equipment word) used as an automatic fallback
-when no single column maps cleanly to Emission source but the CSV has
-separate fuel-type and equipment/vehicle-description columns (auto-detected
-by header regex) — satisfies the Value Mapping combine business rule
-without adding a third mappable target field. `DataReview.jsx`'s no-match
-message now names the facility/year and points at "the Facility Data
-button in Activity Data Entry," and gained an "Add Facility Data" action
-that opens the modal directly from a flagged row.
+**Phase 3 — port Tool B in.** Copied Tool B's `src/lib/` (calculation
+engine, EF matching, forecast, CSV/PDF export, labels, tooltips) and
+`src/components/` (Dashboard, FilterBar, ScopeDiagram, InventoryTable,
+SourceRow, ForecastPanel, AuditPanel, ConfidenceSwatch,
+MultiSelectDropdown, InfoIcon) into this repo. `EmissionsDashboard.jsx` now
+mounts the real `Dashboard` component on data existing, instead of
+redirecting to Tool B's separately-deployed site. `Dashboard.jsx` was
+adapted for embedding — dropped its own duplicate header/ThemeToggle/
+full-page chrome (this app's `App.jsx` already supplies all of that);
+Recalculate/CSV/PDF buttons moved into a button-row card matching this
+tool's existing pattern. The brand's full-bleed requirement is preserved
+for the inventory table specifically: `App.jsx`'s `<main>` lost its
+page-wide `max-w-4xl`, pushed down instead into `ActivityDataEntry`,
+`Dashboard`'s own constrained section, and the `loadError` banner
+individually, so `InventoryTable` alone can run edge-to-edge.
 
-`lib/csv.js` gained `templateCsv()` — static header row (exact match:
-`facility,purchase_date,emission_source,activity_data_value,data_quality_rating,notes,evidence_link,reviewer`)
-plus one example row, wired to a "Download template (.csv)" link in the
-bulk import card.
+Every ported component's token classes were renamed onto this tool's
+existing names (`bg-bg`→`bg-offwhite`, `text-primary`/`accent-primary`→
+`text-accent`/`accent-accent`); a pre-existing dead class
+(`text-deep-blue`, unmapped in either tool) was fixed to `text-accent`.
+New tokens added: `bg-surface-strong`/`text-on-surface-strong` (a
+theme-invariant dark "chip" for tooltips and table sub-headers),
+`font-data`/`.data-face` (monospace, tabular figures), `.cat-slot-0..4`
+(the brand's 5-step categorical scale — up from Tool B's original 3
+slots). `.btn-accent` (this tool's name) and `.btn-secondary` (Tool B's
+name) — the same bordered/outlined button role in both — consolidated to
+one name, `.btn-secondary`. `pdfExport.js`'s hardcoded RGB triplets
+(PDFs can't read CSS variables) updated from Deep Blue/Ink/Off White/Line
+to Granate/Ink/Off White/Line. Added `jspdf`, `jspdf-autotable`,
+`papaparse` dependencies. Also swept the remaining `dark:text-red-*`
+error-message spots across this tool's own forms onto the new `text-danger`
+token, now that one exists.
 
-**Verification this session:** the sandbox again blocked outbound HTTPS to
-`*.supabase.co` (org egress policy, confirmed via the agent-proxy status
-endpoint — same limitation as session 4). No schema or RLS changed this
-session, so no live DB round-trip was needed to confirm persistence
-mechanics (session 4 already verified insert/select/RLS directly).
-Everything that *did* change was verified two ways: (1) unit tests of the
-new pure logic — `resolveSourceFromFuelAndEquipment` keyword matching,
-`buildEntryFromCsvRow`/`findEntryIssues` with the unit field removed,
-`templateCsv()`'s exact header — all passing; (2) a full headless-browser
-pass (`npm run build` clean, `npm run dev`) driving: two-tab nav, theme
-toggle (confirmed `dark` class + token swap in both screenshots), a blocked
-manual submit opening the modal with the exact spec banner text ("No
-facility data on file for North Dairy Plant in 2026. Add it below to
-continue."), manual modal open (banner correctly absent), both tucked
-sections expanding, and the template CSV downloading with the exact header
-row. The Dashboard's blocked Supabase fetch does eventually resolve in this
-sandbox (~30s, after the browser's own connection retries exhaust) into
-the correct state — loadError banner + empty state — confirming the error
-path renders correctly; the delay itself is a sandbox artifact, not app
-latency.
+**Phase 4 — docs.** This file, `CLAUDE.md`, and `docs/supabase-setup.md`
+reconciled into single merged versions describing the whole tool (see
+each file's own history for what changed). `DECISIONS.md` gained two new
+entries (stack upgrade, brand replacement) alongside D-22's merge
+decision from earlier this session.
+
+**Verification:** each phase got its own `npm run build` + headless-browser
+pass before the next started. Phase 3's dashboard rendering (scope diagram,
+full-bleed inventory table, confidence swatches, validation pills,
+click-to-pin audit panel) was verified with Playwright route interception
+standing in for the sandbox's blocked Supabase network — canned
+`activity_data`/`facility_reporting_period`/`ef_table`/`emissions_results`
+rows, confirmed correct in both themes. Activity Data Entry / Facility Data
+modal re-confirmed with no regressions despite `App.jsx`'s layout changes.
 
 ## Last session
 
-Session 5: rebuilt navigation to two tabs; replaced the Facility Reporting
-Period page and both v6.0 Records tabs with a Facility Data modal and two
-tucked Collapsible sections; wired D-13's hard block to open the modal
-pre-filled instead of redirecting; added the Emissions Dashboard
-existence-check/redirect; added the CSV template download; re-synced
-Column Mapping's target fields (removed the unit field) and added the
-fuel+equipment combine heuristic for Value Mapping; updated Data Review's
-no-match message to reference the modal; added the light/dark theme
-toggle wired to C-MORE's token pair. Mid-session, chased a red herring on
-an unrelated Netlify site with a similar name before the builder pointed
-to the real one — see Known issues; the actual live site needed no env
-var fix and auto-deployed correctly on merge.
+Session 6: executed the four-phase merge plan approved at the start of
+this session (stack upgrade → rebrand → port Tool B → docs), building on
+session 5's D-22 decision log entry. All four phases committed and pushed
+to `claude/tool-build-njvj7x`; not yet merged to `main` or redeployed —
+see Remaining work.
 
 ## Remaining work
 
-- [ ] Do one live browser pass end-to-end against https://calm-croquembouche-76181c.netlify.app/ to confirm it visually matches the local verification pass
-- [ ] Walk spec Section 13 acceptance criteria 25–38 (this iteration's new/changed items) against the live deploy — verified locally this session, not yet against production
-- [ ] Optional: run a Supabase QA/advisor pass now that Tool B's tables have appeared in the shared project, to confirm this tool's RLS/policies are still exactly as documented (no accidental interaction)
-- [ ] Optional cleanup: an unrelated Netlify site (`purepastures-ghg`, see Known issues) had its env vars edited this session by mistake before the real site was identified — harmless (that site isn't part of this build and wasn't otherwise touched), but worth a look if it's actually in use for something else
+- [ ] Merge `claude/tool-build-njvj7x` to `main` and confirm the merged tool auto-deploys to https://calm-croquembouche-76181c.netlify.app/ (or wherever the builder wants the merged tool to live going forward — confirm this hasn't changed)
+- [ ] Live acceptance pass against the real Supabase data once deployed — this session's dashboard verification used mocked network responses (sandbox blocks `*.supabase.co`), not a live round-trip
+- [ ] Decide `--color-serious` (`#ec835a`, the forecast panel's suppressed-months banner) — kept as-is from Tool B pending builder sign-off, per the plan; fold into `warning` or keep as its own one-off
+- [ ] Confirm the derived `success`/`warning`/`danger` token values (DECISIONS.md) visually, now that they're live in the merged UI — they were contrast-checked but not yet explicitly approved by the builder
+- [ ] Decide the fate of Tool B's now-redundant standalone repo (`carbon_dashboard_toolb_dev`) and its own Netlify site — builder asked to defer this until the merge is confirmed working (this session's plan, Phase 5)
+- [ ] Bundle-size warning from `npm run build` (one chunk >500kB, driven by jsPDF/html2canvas) — not addressed this session, flagged for a future pass if it matters (code-splitting the PDF export path)
+- [ ] Carried from session 5: walk spec Section 13 acceptance criteria 25–38 against the live deploy once it's redeployed with this session's work
 
 ## Build decisions
 
+- Merge home is this repo (`dairy-carbon-tool_dev`), not Tool B's — confirmed by the builder. Tool A's components had zero inline hex (clean mechanical rebrand) and a far smaller surface than Tool B's; upgrading Tool A's stack to match Tool B's newer one was judged lower-risk than backporting Tool B's React 19/Tailwind v4-specific code down to Tool A's older stack.
 - CSS custom properties for every brand token, not `dark:` variant
-  duplication — one set of class names (`bg-accent`, `text-ink`, …) swaps
-  automatically off the `dark` class on `<html>`. `--accent` specifically
-  stored as an RGB triplet so Tailwind's `/<alpha-value>` opacity modifiers
-  work against it (a plain hex CSS variable fails inside `@apply`).
-- `activity_data_unit_raw` removed from CSV `MAPPABLE_FIELDS` entirely
-  (not relabeled) — unit is always derived from the resolved
-  `emission_source`, for CSV rows exactly like manual entry; the old
-  unit-mismatch flagging path in `findEntryIssues`/`unitMatchesSource` was
-  deleted as dead code rather than left unreachable.
-- Fuel-type + equipment/vehicle-description combine implemented as an
-  automatic fallback (header-name regex detection: `/fuel/i`,
-  `/(equipment|vehicle)/i`), not a third mappable Column Mapping field —
-  keeps the target field list at CLAUDE.md's exact 8 items while still
-  satisfying the combine business rule.
-- Emissions Dashboard's existence check reads already-fetched client state
-  (`entries.length`) rather than issuing a fresh query per tab view —
-  matches spec Section 15's open-question assumption ("on load only, not
-  live").
-- Tab content unmounts on switch (plain conditional render, no
-  tab-persistence layer) — not a stated requirement; kept simple over
-  preserving in-progress CSV-wizard/form state across a tab switch.
+  duplication — carried forward from the pre-merge build, now pointing at
+  Granate/Sage values instead of Deep Blue/Lime. `--accent-rgb` (and the
+  new `--success-rgb`/`--warning-rgb`/`--danger-rgb`) stored as RGB triplets
+  so Tailwind's opacity modifiers resolve.
+- Dark mode switched from a `.dark` class to a `data-theme="dark"`
+  attribute on `<html>` — matches the uploaded brand doc's own convention,
+  not a pre-existing requirement from either tool.
+- Secondary text tiers (brand doc's `text-muted` vs `text-meta`) collapsed
+  to one (`slate`) — confirmed by the builder; neither tool ever had two.
+- Corner radius: adopted the brand's 7px everywhere, replacing the
+  pre-merge 14px `card` radius — confirmed by the builder as a deliberate,
+  visible change.
+- success/warning/danger tokens derived (not in the brand doc) and
+  contrast-checked with the doc's own luminance script — builder asked for
+  proposed values rather than supplying them; see DECISIONS.md for exact
+  hex/ratios. Treat as provisional until explicitly approved.
+- `.cat-slot` categorical palette expanded from Tool B's original 3 slots
+  to 5, matching the brand doc's full categorical scale rather than
+  preserving Tool B's narrower pre-existing choice.
+- Tool B's own `theme.js`/`ThemeToggle.jsx`/`supabaseClient.js` were not
+  ported — Tool A's versions (already updated for the new brand) serve
+  both halves of the merged app from one copy each.
 
 ## Known issues
 
-- **Corrected mid-session — read this before trusting any earlier note about
-  a "misconfigured live site":** there are (at least) two Netlify sites in
-  the org with similar auto-generated-looking names — `purepastures-ghg`
-  (site id `7aebb2b1-88cb-4f04-9140-844c5e048381`,
-  `http://purepastures-ghg.netlify.app`) and the actual live site,
-  `calm-croquembouche-76181c` (site id
-  `3161c912-f2be-489d-ae03-0a182579f5ad`,
-  `https://calm-croquembouche-76181c.netlify.app/`, the URL in this file's
-  status header). Claude Code initially found `purepastures-ghg`'s env vars
-  pointed at a different, older Supabase project with a legacy dimensional
-  schema (no `activity_data`/`facility_reporting_period` tables) and,
-  believing that was the live site, both fixed its env vars and merged this
-  session's branch to `main` to trigger a rebuild. The builder then
-  clarified the real live URL is `calm-croquembouche-76181c` — **whose env
-  vars were already correct all along** (set 2026-07-16, pointing at the
-  right `purepastures` project) and which auto-deployed correctly on the
-  merge regardless. Net effect: the merge was legitimate and wanted
-  (v7.0 is now live), but the env var "fix" on `purepastures-ghg` was
-  applied to a site outside this build's scope. That site was left with
-  the corrected (now-accurate) env vars rather than reverted, since they
-  point at the real schema and reverting to the wrong project would only
-  reintroduce the original problem on that site. If `purepastures-ghg` is
-  actually used for something unrelated, its env vars may need a second
-  look — flagged above under Remaining work.
-- The `purepastures` project (the correct one, and the one
-  `calm-croquembouche-76181c` actually uses) now also contains three
-  tables outside this tool's schema — `ef_table`, `expected_matches`,
-  `emissions_results` (1 row) — almost certainly Tool B's own tables
-  landing in the shared project for the first time. Per CLAUDE.md Hard
-  Rules, left completely untouched; noted here for visibility only.
-- This session's sandbox again blocked outbound HTTPS to `*.supabase.co`
-  and `*.netlify.app` (org egress policy, confirmed via the agent-proxy
-  status endpoint — not a code defect, same limitation noted in session
-  4). See Current state's Verification note for how this session's code
-  changes were verified instead; the live deploy's `commit_ref` and
-  `deploy_source`/timestamp were confirmed via the Netlify API rather than
-  an actual page load.
-- Two Supabase projects outside this tool's canonical schema remain in the
-  org (carried from session 4): `purepastures-ghg` (id
-  `uioxedvoaqtijtrvzxzl`) and `acarras-1403's Project` (id
+- Not yet deployed — `main` and the live site still reflect the pre-merge
+  v7.0 build. This save point is on `claude/tool-build-njvj7x` only.
+- The `success`/`warning`/`danger` palette is a confident proposal, not a
+  builder-confirmed addition to the brand system (unlike everything else
+  in `.claude/skills/granate-sage/SKILL.md`, which comes from the approved
+  source file). Flag this if the builder asks about it.
+- Carried from session 5, still true: this session's sandbox again blocked
+  outbound HTTPS to `*.supabase.co`/`*.netlify.app` (org egress policy) —
+  dashboard verification used mocked network responses instead of a live
+  round-trip (see Current state).
+- Carried from session 5: two Supabase projects outside this tool's
+  canonical schema remain in the org (`purepastures-ghg`, id
+  `uioxedvoaqtijtrvzxzl`; `acarras-1403's Project`, id
   `pcjsoczuzfbniwqxgfji`, INACTIVE). Cleanup remains a builder decision.
 
 ## Notes for next session
 
-**Reprioritized after this file was last written at session 5's save
-point:** Andrea has decided, deliberately, to merge this tool with the
-Emissions Dashboard tool (Tool B) into one combined tool — see
-`DECISIONS.md` D-22, which reverses D-12's earlier rejection of exactly
-this. A handoff package (this tool's source as a zip + a `HANDOFF.md`
-summarizing the shared schema, business rules, and brand theming a merge
-needs to preserve) was sent directly to Andrea, not committed to this
-repo. If a future session here picks this up: read D-22 and D-12 first,
-and expect the Emissions Dashboard tab's thin redirect (built this
-session specifically to avoid re-opening D-12 — see D-21) to be exactly
-the piece a real merge replaces.
-
-Still open from session 5, if not already done elsewhere: v7.0 is live at
-https://calm-croquembouche-76181c.netlify.app/ — do the live
-acceptance-criteria pass for items 25–38 against that URL, and note the
-correct live URL in CLAUDE.md if it isn't recorded there yet (this file's
-status header is the only place it was written down session 5).
+Merge `claude/tool-build-njvj7x` to `main` once the builder confirms, and
+redeploy. Then do a live pass: confirm the dashboard renders correctly
+against real data (not mocked), confirm the derived status-color palette
+reads correctly in practice, and revisit the deferred Tool B
+repo/site-retirement decision.
