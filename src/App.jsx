@@ -1,30 +1,22 @@
 import { useEffect, useState } from 'react'
+import Sidebar from './components/Sidebar.jsx'
+import Home from './components/Home.jsx'
+import ReportingUnit from './components/ReportingUnit.jsx'
 import EmissionsDashboard from './components/EmissionsDashboard.jsx'
 import ActivityDataEntry from './components/ActivityDataEntry.jsx'
-import FacilityModal from './components/FacilityModal.jsx'
 import ThemeToggle from './components/ThemeToggle.jsx'
 import { fetchFacilityReportingPeriods, fetchActivityData } from './lib/supabaseData.js'
 import { enrichActivityRow, enrichFacilityRow } from './data/lookups.js'
 import { getInitialTheme, applyTheme } from './lib/theme.js'
 
-const TABS = [
-  { id: 'dashboard', label: 'Emissions Dashboard' },
-  { id: 'entry', label: 'Activity Data Entry' },
-]
-
 // Tier 2 (D3+A1, spec v7.0): both tables persist in Supabase and survive a
 // closed tab or a separate session — RLS grants anon read+insert only, no
-// update/delete anywhere in this frontend. Two top-level tabs only —
-// Facility Data and past-entry review live inside Activity Data Entry (a
-// modal and a tucked section, respectively), never as their own tabs.
-// Emissions Dashboard is listed first in the nav (spec Section 8) but is
-// NOT the default landing tab — once any activity_data exists, that tab
-// immediately navigates away to Tool B, so defaulting to it would bounce
-// every visitor off this tool before they could do anything. Activity Data
-// Entry (this tool's actual purpose) is the default; Emissions Dashboard
-// still redirects correctly when a visitor clicks it deliberately.
+// update/delete anywhere in this frontend. Sidebar IA (replaces the old
+// two top tabs): Home is the default landing section — it's a progress
+// view, not a workflow step, so it's always safe to land on regardless of
+// whether any data exists yet.
 export default function App() {
-  const [activeTab, setActiveTab] = useState('entry')
+  const [activeSection, setActiveSection] = useState('home')
   const [theme, setTheme] = useState(getInitialTheme)
 
   const [entries, setEntries] = useState([])
@@ -33,7 +25,10 @@ export default function App() {
   const [loadError, setLoadError] = useState('')
   const [dataLoaded, setDataLoaded] = useState(false)
 
-  const [facilityModal, setFacilityModal] = useState({ open: false, blocked: false, prefill: null })
+  // Reporting Unit's blocked-submit banner + prefill — a page can't be
+  // "open" the way a modal was, so this just tracks whether the visit was
+  // triggered by a hard block, and with what facility+year.
+  const [facilityPrefill, setFacilityPrefill] = useState({ blocked: false, prefill: null })
 
   useEffect(() => {
     applyTheme(theme)
@@ -90,89 +85,77 @@ export default function App() {
 
   function addFacilityEntry(row) {
     setFacilityEntries((prev) => [enrichFacilityRow(row), ...prev])
-    setFacilityModal({ open: false, blocked: false, prefill: null })
+    setFacilityPrefill({ blocked: false, prefill: null })
   }
 
-  function openFacilityModal(prefill = null) {
-    setFacilityModal({ open: true, blocked: false, prefill })
+  function goToReportingUnit(prefill = null) {
+    setFacilityPrefill({ blocked: false, prefill })
+    setActiveSection('facility')
   }
 
   function handleBlocked(prefill) {
-    setFacilityModal({ open: true, blocked: true, prefill })
-  }
-
-  function closeFacilityModal() {
-    setFacilityModal((m) => ({ ...m, open: false }))
+    setFacilityPrefill({ blocked: true, prefill })
+    setActiveSection('facility')
   }
 
   return (
-    <div className="min-h-screen bg-offwhite">
+    <div className="flex min-h-screen flex-col bg-offwhite">
       <header className="border-b border-line bg-surface">
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-3">
+        <div className="flex items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="inline-block h-4 w-4 rounded-sm bg-accent" aria-hidden />
-            <span className="font-serif text-base font-bold text-accent">PurePastures GHG</span>
+            <span className="font-serif text-base font-bold text-accent">Company's Carbon Footprint</span>
           </div>
-          <div className="flex items-center gap-2">
-            <nav className="flex items-center gap-2 text-sm font-medium">
-              {TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={
-                    activeTab === tab.id
-                      ? 'rounded-md bg-accent/10 px-3 py-1.5 text-accent'
-                      : 'rounded-md px-3 py-1.5 text-slate transition hover:bg-accent/5 hover:text-ink'
-                  }
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-            <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))} />
-          </div>
+          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))} />
         </div>
       </header>
 
-      <main className="space-y-8 px-4 py-8">
-        {loadError && (
-          <p className="card mx-auto max-w-4xl text-sm text-danger" role="alert">
-            {loadError}
-          </p>
-        )}
+      <div className="flex flex-1 flex-col sm:flex-row">
+        <Sidebar activeSection={activeSection} onNavigate={setActiveSection} />
 
-        {activeTab === 'dashboard' && (
-          <EmissionsDashboard
-            loading={!dataLoaded}
-            hasData={entries.length > 0}
-            onSwitchToEntry={() => setActiveTab('entry')}
-          />
-        )}
+        <main className="flex-1 space-y-8 px-4 py-8">
+          {loadError && (
+            <p className="card mx-auto max-w-4xl text-sm text-danger" role="alert">
+              {loadError}
+            </p>
+          )}
 
-        {activeTab === 'entry' && (
-          <ActivityDataEntry
-            entries={entries}
-            facilityEntries={facilityEntries}
-            reviewRows={reviewRows}
-            onAddEntry={addEntry}
-            onImportComplete={handleImportComplete}
-            onPromoteReviewRow={promoteReviewRow}
-            onDiscardReviewRow={discardReviewRow}
-            onOpenFacilityModal={openFacilityModal}
-            onBlocked={handleBlocked}
-          />
-        )}
-      </main>
+          {activeSection === 'home' && (
+            <Home entries={entries} facilityEntries={facilityEntries} onNavigate={setActiveSection} />
+          )}
 
-      <FacilityModal
-        open={facilityModal.open}
-        blocked={facilityModal.blocked}
-        prefill={facilityModal.prefill}
-        facilityEntries={facilityEntries}
-        onAdd={addFacilityEntry}
-        onClose={closeFacilityModal}
-      />
+          {activeSection === 'facility' && (
+            <ReportingUnit
+              blocked={facilityPrefill.blocked}
+              prefill={facilityPrefill.prefill}
+              facilityEntries={facilityEntries}
+              onAdd={addFacilityEntry}
+            />
+          )}
+
+          {activeSection === 'entry' && (
+            <ActivityDataEntry
+              entries={entries}
+              facilityEntries={facilityEntries}
+              reviewRows={reviewRows}
+              onAddEntry={addEntry}
+              onImportComplete={handleImportComplete}
+              onPromoteReviewRow={promoteReviewRow}
+              onDiscardReviewRow={discardReviewRow}
+              onGoToReportingUnit={goToReportingUnit}
+              onBlocked={handleBlocked}
+            />
+          )}
+
+          {activeSection === 'results' && (
+            <EmissionsDashboard
+              loading={!dataLoaded}
+              hasData={entries.length > 0}
+              onSwitchToEntry={() => setActiveSection('entry')}
+            />
+          )}
+        </main>
+      </div>
     </div>
   )
 }

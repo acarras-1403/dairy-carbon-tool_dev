@@ -11,7 +11,7 @@ const COLUMNS = [
 ]
 
 // Reflects every persisted Facility Data record (spec v7.0 — tucked inside
-// the Facility Data modal's "Past facility data entries" Collapsible); no
+// the Reporting Unit page's "Past facility data entries" Collapsible); no
 // edit/delete anywhere here, matching the RLS policies (insert-only, no
 // update/delete grant).
 export default function FacilityTable({ entries }) {

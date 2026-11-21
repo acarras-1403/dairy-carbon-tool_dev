@@ -1,7 +1,7 @@
-# PurePastures GHG Tool
+# Company's Carbon Footprint
 
 ## Identity
-Logs GHG activity data and annual facility data for PurePastures Dairy Cooperative facilities, matches it against an emission factor database, calculates emissions with a confidence score, and displays a filterable Scope 1/2/3 dashboard with CSV/PDF export — one tool, anyone with the link can use it.
+Logs GHG activity data and annual facility data for PurePastures Dairy Cooperative facilities, matches it against an emission factor database, calculates emissions with a confidence score, and displays a filterable Scope 1/2/3 dashboard with CSV/PDF export — one tool, anyone with the link can use it. Renamed from "PurePastures GHG Tool" to "Company's Carbon Footprint" this session (user-facing text and this file only — the repo name, Supabase project, and Netlify URL are unchanged).
 Tier: 2 — data persists to Supabase, no login required (D3+A1)
 Spec version governed: v7.0 (Activity Data Entry half) / v1.5 (Emissions Dashboard half) — the product-spec.md versions these rules were last derived from, before the two tools' codebases were merged into this one repo.
 **Formerly two separate tools, two separate repos** — `dairy-carbon-tool_dev` (Activity Data Entry, "Tool A") and `carbon_dashboard_toolb_dev` (Emissions Dashboard, "Tool B"), sharing one Supabase project. Merged into this single codebase per DECISIONS.md **D-22** (a deliberate reversal of **D-12**, which had originally rejected merging them). Tool A's repo is the merged home; Tool B's repo still exists but is no longer the deploy target — see PROGRESS.md for status.
@@ -66,7 +66,7 @@ Tables (no schema changes from the merge itself):
 - Netlify Identity: never. Supabase Auth is the only authentication system in this stack, if one is ever added.
 - RLS: never disabled on any table. If a query fails, fix the policy or the query — never disable RLS to work around it.
 - GDPR: consent checkbox and the confirmed data statement required on the manual entry form and CSV import's Column Mapping step before any submission including `reviewer`. Personal data: `reviewer` only. Deletion requests → sustainability@purepastures.com. Region already EU (Frankfurt) — compliant.
-- Facility Data blocking validation is a hard block, not a warning — an Activity Data entry with no matching Facility Data for its facility+year cannot submit under any path. It opens the Facility Data modal in place, pre-filled with facility+year, with a warning banner — it never redirects to a separate page.
+- Facility Data blocking validation is a hard block, not a warning — an Activity Data entry with no matching Facility Data for its facility+year cannot submit under any path. It navigates to the Reporting Unit page, pre-filled with facility+year, with a warning banner.
 - Activity value's unit is locked and auto-derived from the selected emission source. It is never an independently editable field, in the manual form or in CSV import.
 - `data_quality_rating` valid values, per the live database: `measured`, `calculated`, `estimated`, `proxy`.
 - No update or delete capability exists in the Activity Data Entry half of the UI — matches its two tables' RLS exactly. Do not add a "Remove" or "Edit" control to either table view or either tucked records section. The Emissions Dashboard's Validate/Reject controls on `emissions_results.validation_status` are the one deliberate exception (matches that table's own RLS).
@@ -83,31 +83,39 @@ Tables (no schema changes from the merge itself):
 ## Brand
 Brand is governed by the granate-sage skill at .claude/skills/granate-sage/SKILL.md. Invoke it for any UI or visual work. Replaces the retired placeholder "C-MORE" brand (never an official file, just a stand-in — see DECISIONS.md).
 Hard rules that hold even if the skill is not loaded:
-- Background: #F7F5F2 (light) / #161513 (dark) — never white or Tailwind gray defaults
+- Background: #F7F5F2 (light) / #1E1013 maroon-tinted (dark) — never white, never a neutral/near-black, never Tailwind gray defaults. Dark mode is a dark red, not an inverted neutral (confirmed D-25).
 - Accent/action (identification): #7A1F2B Granate in light mode, #D4717F (lightened Granate) in dark mode — the only action colour, never a second filled-button colour, never Tailwind blue defaults
 - Sage #8A9A7B is decorative only (lines, icons, section backgrounds) — never text, never a button fill
 - Font: Source Serif 4 (600, headings) + Source Sans 3 (400/600, body), both self-hosted via @fontsource — never a Google Fonts CDN link. **Data face** — monospace, tabular-figures (`.data-face`, `--font-data`) — for the Emissions column and any other numeric table values.
 - One radius everywhere: 7px
 - Neutrals lead in both themes. A light/dark toggle in the top bar is required, not optional — applies via `data-theme="dark"` on `<html>`, not a class.
 - Collapsible sections: the heading itself is the toggle — no separate chevron button, except where an existing pattern (e.g. the tucked past-entries sections) already shipped with one.
-- Full-bleed layout for the Emissions Dashboard's inventory table specifically — no centered max-width wrapper on it, even though the rest of each tab's content stays at the usual constrained width.
+- Full-bleed layout for the Results inventory table specifically — no centered max-width wrapper on it, even though the rest of each section's content stays at the usual constrained width (full-bleed is relative to the content area beside the persistent sidebar, not the viewport).
 - Confidence swatches and validation-status pills use the theme's own status tokens (success/warning/danger), never fixed hex, so they stay correctly mapped in both themes.
 
 ## Business Rules
 
 ### Navigation
-- Two top-level tabs only: Emissions Dashboard (first), Activity Data Entry (second, and the default landing tab — see Known issue/fix in PROGRESS.md history for why). No separate Facility Data tab/page, no separate Records tabs.
-- Facility Data is reached only via a button inside Activity Data Entry, or automatically on a blocked submission — a modal, never a page.
-- Past entries: collapsed-by-default sections, not tabs — Activity Data's at the bottom of its tab, Facility Data's inside its modal.
+- A persistent lateral (sidebar) nav, not top tabs (D-25 reverses the earlier two-tab IA) — four destinations: **Home** (new, default landing page), **Reporting Unit** (its own full page, promoted from a modal), **Activity Data Entry**, **Results** (renamed from "Emissions Dashboard" — same content/logic, one combined section covering both the inventory table/scope diagram and the audit trail).
+- Home is the default landing section — unlike the old default-tab bug, Home is a progress view with no redirect-on-data-existing behavior, so it's always safe to land on.
+- Reporting Unit is reached via the sidebar, or automatically on a blocked Activity Data submission (navigates there, pre-filled, with a warning banner) — a page, never a modal.
+- Past entries: collapsed-by-default sections, not tabs — Activity Data's at the bottom of its page, Facility Data's on the Reporting Unit page.
+
+### Home
+- App-wide completion tracker, 5 items tied to the real GHG-inventory workflow (Reporting Unit on file for the current year; Scope 1/2/3 activity data entered; Results calculated), each with a one-line "why this matters" note and a ✓/missing marker, each linking to the section that resolves it.
+- Scope 1/2/3 pie chart (a different chart type from Results' stacked bar, by design) summing `result_tco2e` per scope from `emissions_results`; missing-activity-data callouts when a scope has no entries, with a jump-link to Activity Data Entry.
+- KPI/stat tiles (icon + number): total tCO2e, activity data entry count, facilities on file for the current year, pending-validation count.
 
 ### Activity Data Entry
 - CSV import target fields, exact match: facility, purchase_date, emission_source, activity_data_value, data_quality_rating, notes, evidence_link, reviewer.
 - `purchase_id` folds into `notes`, not its own column. Duplicate detection (warn, not block) compares that text + `facility` — accepted limitation, not a bug.
 - Value Mapping combines a fuel-type column and an equipment/vehicle-description column when both exist, to resolve stationary vs. mobile `emission_source`.
-- Data Review's "no Facility Data match" message points to the Facility Data button — never a page.
+- Data Review's "no Facility Data match" message points to the Reporting Unit page (sidebar item), replacing the old modal-button language.
+- KPI/stat tile row at the top (same shared tile component as Home); no more Facility Data button-row card — just a small inline link, since the sidebar item is always present and a blocked submit already navigates there.
+- The manual entry form (`EntryForm.jsx`) has its own per-form progress indicator — its required fields grouped into 5 sections, each with a one-line "why this matters" note and a ✓/missing marker, showing "X of 5 sections ready." This is in addition to Home's app-wide tracker, not instead of it — both exist (D-25). Stays a single-page form, not a multi-step wizard.
 
-### Emissions Dashboard
-- No `activity_data` rows → local empty state ("No data available. Please add data in the Activity Data Entry tab.") with a tab-switch button. Rows exist → render the real dashboard **in place, in this tool** (D-22 reverses the earlier redirect-to-external-site behavior; D-12's "never render the dashboard's content locally" no longer applies).
+### Results
+- No `activity_data` rows → local empty state ("No data available. Please add data in Activity Data Entry.") with a switch-section button. Rows exist → render the real dashboard **in place, in this tool** (D-22 reverses the earlier redirect-to-external-site behavior; D-12's "never render the dashboard's content locally" no longer applies).
 - Match Step: filter `ef_table` rows by exact `emission_source`, then `facility_country` (fallback `"ALL"`), then most recent `publication_year` ≤ the activity's reporting year.
 - Fan-out Rule: every EF row surviving the Match Step produces its own Emissions Result row — never collapsed to one result per `emission_source`.
 - No-Match: zero matches → stub row, `result_tco2e = null`, `export_blocked = true`, no scope, appears only in the Unclassified bucket, reason = Cause B. Not a hard entry-time gate (that would be an Activity Data Entry change, not this half's scope).

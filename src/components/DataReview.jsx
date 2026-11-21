@@ -14,7 +14,7 @@ import { findFacilityMatch } from '../lib/facilityMatch.js'
 import { yearFromPeriod } from '../lib/periods.js'
 import { insertActivityData } from '../lib/supabaseData.js'
 
-function ReviewRow({ row, facilityPeriods, onPromote, onDiscard, onOpenFacilityModal }) {
+function ReviewRow({ row, facilityPeriods, onPromote, onDiscard, onGoToReportingUnit }) {
   const [form, setForm] = useState({
     reporting_period: row.reporting_period,
     facility_id: row.facility_id,
@@ -237,7 +237,7 @@ function ReviewRow({ row, facilityPeriods, onPromote, onDiscard, onOpenFacilityM
         <button
           className="btn-ghost"
           onClick={() =>
-            onOpenFacilityModal({
+            onGoToReportingUnit({
               facility_id: form.facility_id,
               reporting_year: yearFromPeriod(form.reporting_period),
             })
@@ -259,7 +259,7 @@ function ReviewRow({ row, facilityPeriods, onPromote, onDiscard, onOpenFacilityM
 // Holds only flagged rows from CSV import (spec Section 8) — never written
 // to Supabase until promoted. Fix and promote (persists), or discard. Lives
 // inside Activity Data Entry (v7.0 — no separate step/page anymore).
-export default function DataReview({ rows, facilityPeriods, onPromote, onDiscard, onOpenFacilityModal }) {
+export default function DataReview({ rows, facilityPeriods, onPromote, onDiscard, onGoToReportingUnit }) {
   if (rows.length === 0) return null
 
   return (
@@ -280,7 +280,7 @@ export default function DataReview({ rows, facilityPeriods, onPromote, onDiscard
             facilityPeriods={facilityPeriods}
             onPromote={onPromote}
             onDiscard={onDiscard}
-            onOpenFacilityModal={onOpenFacilityModal}
+            onGoToReportingUnit={onGoToReportingUnit}
           />
         ))}
       </div>

@@ -47,28 +47,40 @@
   --cat-slot-2: #9f5f2e;
   --cat-slot-3: #b59345;
   --cat-slot-4: #a7bf6f;
+  /* Scope 1/2/3 pie chart (Home) — evenly spaced across the same
+     categorical scale (slots 0/2/4) for maximum separation; a dedicated
+     set of tokens so Home's chart doesn't silently change if the
+     category-cycling palette above is ever retuned. */
+  --scope-1: #7a1f2b;
+  --scope-2: #9f5f2e;
+  --scope-3: #a7bf6f;
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #161513;
-  --surface: #221f1d;
-  --surface-alt: #2b2724;
-  --border: #3a3633;
-  --ink: #f2efea;
+  /* Dark mode is a dark, Granate-tinted red — never a neutral near-black
+     (confirmed this session: no black in either palette). */
+  --bg: #1e1013;
+  --surface: #2b171b;
+  --surface-alt: #3a1f24;
+  --border: #4d2a30;
+  --ink: #f3ecea;
   --slate: #c3cdb6;
   --accent-rgb: 212 113 127; /* #D4717F — lightened granate, still granate family */
   --accent-contrast: #1f1d1b;
   --success-rgb: 143 199 138; /* #8FC78A */
   --warning-rgb: 232 182 92; /* #E8B65C */
   --danger-rgb: 232 132 122; /* #E8847A */
-  --surface-strong: #0d0c0b;
+  --surface-strong: #150a0c;
   --on-surface-strong: #f7f5f2;
   --cat-slot-0: #d4717f;
   --cat-slot-1: #d08a5e;
   --cat-slot-2: #c9a05a;
   --cat-slot-3: #b4be72;
   --cat-slot-4: #cbd6a5;
+  --scope-1: #d4717f;
+  --scope-2: #c9a05a;
+  --scope-3: #cbd6a5;
 }
 
 @theme {
@@ -90,6 +102,9 @@
   --color-success: rgb(var(--success-rgb));
   --color-warning: rgb(var(--warning-rgb));
   --color-danger: rgb(var(--danger-rgb));
+  --color-scope1: var(--scope-1);
+  --color-scope2: var(--scope-2);
+  --color-scope3: var(--scope-3);
   /* Fixed one-off, ported as-is from Tool B — never themed. Used only by
      the run-rate forecast's suppressed-months banner. Pending builder
      sign-off on whether it stays its own color or folds into `warning`. */

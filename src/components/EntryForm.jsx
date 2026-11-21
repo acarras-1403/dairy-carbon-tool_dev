@@ -12,6 +12,7 @@ import {
 import { recentPeriods, currentPeriod, yearFromPeriod } from '../lib/periods.js'
 import { findFacilityMatch } from '../lib/facilityMatch.js'
 import { insertActivityData } from '../lib/supabaseData.js'
+import { IconCheck } from './icons.jsx'
 
 const blank = {
   reporting_period: currentPeriod(),
@@ -33,7 +34,7 @@ const GDPR_STATEMENT =
 // Every field required except Notes, Evidence link, Reviewer (spec Section
 // 8 / Business Rules). Blocked from submitting without a matching Facility
 // Data entry for facility + reporting year (D-13, still a hard block in
-// v7.0) — a blocked submit opens the Facility Data modal in place
+// v7.0) — a blocked submit navigates to the Reporting Unit page
 // (App.jsx), instead of v5.0's inline redirect to a separate step.
 export default function EntryForm({ facilityPeriods, onAdd, onBlocked }) {
   const [form, setForm] = useState(blank)
@@ -60,6 +61,44 @@ export default function EntryForm({ facilityPeriods, onAdd, onBlocked }) {
   )
   const selectedSource = SOURCES.find((s) => s.id === form.source_id)
   const hierarchy = form.source_id ? deriveHierarchy(form.source_id) : null
+
+  // Per-form progress indicator (in addition to Home's app-wide tracker) —
+  // groups this form's own fields into 5 sections so the user always knows
+  // what's left, without turning the form into a multi-step wizard.
+  const reviewerEntered = form.reviewer.trim().length > 0
+  const sections = [
+    {
+      id: 'facility',
+      label: 'Facility & reporting period',
+      why: 'Identifies which site and period this entry belongs to.',
+      done: Boolean(form.facility_id && form.reporting_period),
+    },
+    {
+      id: 'source',
+      label: 'Emission source',
+      why: 'Determines the Scope and which emission factor the entry is matched against.',
+      done: Boolean(form.category_id && form.source_id),
+    },
+    {
+      id: 'value',
+      label: 'Activity value & data quality',
+      why: 'The raw amount and how reliable it is — both feed directly into the result and its confidence score.',
+      done: Boolean(form.activity_data_value_raw !== '' && form.data_quality_rating),
+    },
+    {
+      id: 'supporting',
+      label: 'Supporting info',
+      why: 'Evidence link, reviewer and notes are optional — useful for the audit trail, never required.',
+      done: true,
+    },
+    {
+      id: 'consent',
+      label: 'Consent confirmation',
+      why: 'Only required when a reviewer name is entered, since that is personal data.',
+      done: !reviewerEntered || form.consent,
+    },
+  ]
+  const sectionsDone = sections.filter((s) => s.done).length
 
   function set(field, value) {
     setForm((f) => {
@@ -104,7 +143,7 @@ export default function EntryForm({ facilityPeriods, onAdd, onBlocked }) {
         facility_id: form.facility_id,
         reporting_year: yearFromPeriod(form.reporting_period),
       })
-      setError('No Facility Data on file for this facility and year — add it in the window that just opened, then submit this entry again.')
+      setError('No Facility Data on file for this facility and year — add it on the Reporting Unit page that just opened, then submit this entry again.')
       return
     }
 
@@ -140,6 +179,39 @@ export default function EntryForm({ facilityPeriods, onAdd, onBlocked }) {
   return (
     <form onSubmit={handleSubmit} className="card space-y-4">
       <h2 className="font-serif text-lg font-semibold text-accent">Log activity data</h2>
+
+      <div className="space-y-2 rounded-md border border-line bg-accent/5 p-3">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs font-medium text-slate">
+            {sectionsDone} of {sections.length} sections ready
+          </span>
+          <div className="h-1.5 w-28 overflow-hidden rounded-full bg-accent/10">
+            <div
+              className="h-full bg-accent transition-all"
+              style={{ width: `${(sectionsDone / sections.length) * 100}%` }}
+            />
+          </div>
+        </div>
+        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-5">
+          {sections.map((s) => (
+            <li key={s.id} className="flex items-start gap-1.5">
+              <span
+                className={
+                  s.done
+                    ? 'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-success/15 text-success'
+                    : 'mt-0.5 h-4 w-4 shrink-0 rounded-full border border-line'
+                }
+              >
+                {s.done ? <IconCheck width="10" height="10" /> : null}
+              </span>
+              <span>
+                <span className="block text-xs font-medium text-ink">{s.label}</span>
+                <span className="block text-[11px] leading-snug text-slate">{s.why}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>

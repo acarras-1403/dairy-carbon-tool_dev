@@ -4,7 +4,8 @@ import Dashboard from './Dashboard.jsx'
 // live here too (DECISIONS.md D-22 reverses D-12's earlier rejection of
 // merging the two). Existence check unchanged: no activity_data rows yet
 // -> local empty state; rows exist -> render the real dashboard in place
-// (no longer an external redirect).
+// (no longer an external redirect). Renders under the sidebar's "Results"
+// label — this file/the internal Dashboard.jsx logic is unchanged.
 export default function EmissionsDashboard({ loading, hasData, onSwitchToEntry }) {
   if (loading) return null
 
@@ -13,7 +14,7 @@ export default function EmissionsDashboard({ loading, hasData, onSwitchToEntry }
       <div className="mx-auto max-w-4xl">
         <div className="card flex flex-col items-center gap-4 py-16 text-center">
           <p className="text-sm text-slate">
-            No data available. Please add data in the Activity Data Entry tab.
+            No data available. Please add data in Activity Data Entry.
           </p>
           <button type="button" className="btn-primary" onClick={onSwitchToEntry}>
             Go to Activity Data Entry

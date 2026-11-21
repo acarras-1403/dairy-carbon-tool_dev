@@ -20,9 +20,9 @@ const blank = {
 // Facility Data (UI label; table remains facility_reporting_period),
 // persisted in Supabase, one row per facility per reporting year (unique
 // constraint at the database). Every field is required (Business Rules).
-// Lives inside the Facility Data modal (spec v7.0) — pre-filled when opened
+// Lives on the Reporting Unit page (spec v7.0) — pre-filled when arrived at
 // automatically from a blocked Activity Data entry (App.jsx); the warning
-// banner for that case is rendered by the modal, not this form.
+// banner for that case is rendered by the page, not this form.
 export default function FacilityForm({ prefill, onAdd }) {
   const [form, setForm] = useState(blank)
   const [error, setError] = useState('')

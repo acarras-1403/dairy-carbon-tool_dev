@@ -413,3 +413,28 @@ No entries exist in this file for D-16, D-17, D-18, or D-19. `C-MORE-brand-style
 - **Scope creep check:** in scope — explicitly requested
 - **Spec version bump:** no
 - **Tags:** #g-3 #brand #rebrand #granate-sage #c-more-retired #accessibility
+
+---
+
+## D-25: Rename product to "Company's Carbon Footprint"; replace two top tabs with a sidebar IA (Home, Reporting Unit, Activity Data Entry, Results); maroon dark mode; dual progress indicators
+
+- **Date:** 2026-11-21
+- **Goal:** G-3
+- **Spec section affected:** none directly — this is a UI/IA redesign on top of the merged (D-22) tool, not a change to the underlying business rules in docs/product-spec.md
+- **Status:** adopted
+- **Trigger:** After the D-22 merge landed, Andrea asked for a broader redesign inspired by her LCA-Studio build: a renamed product, a homepage with at-a-glance GHG-inventory progress (Scope 1/2/3 pie chart, missing-data callouts), a lateral sidebar nav replacing the two top tabs, Facility Data promoted to its own full page, more KPI visuals on Activity Data Entry, and a maroon (not near-black) dark mode.
+- **Confirmed with Andrea this session (not assumed):**
+  - New product name **"Company's Carbon Footprint"**, replacing "PurePastures GHG Tool"/"PurePastures GHG" in user-facing text and this file's Identity section only — the repo name, Supabase project, Netlify URL, and `package.json`'s internal `name` are untouched; "PurePastures Dairy Cooperative" stays as the client name throughout descriptive text (e.g. Results' "About this dashboard" copy, tooltips.js) — only the tool's own product name changed.
+  - Facility Data becomes a full sidebar page ("Reporting Unit"), not "Reporting Unit Information" (Andrea's correction) — a blocked Activity Data submit now navigates there instead of opening a modal (`FacilityModal.jsx` deleted; `ReportingUnit.jsx` reuses `FacilityForm.jsx`/`FacilityTable.jsx`/`Collapsible.jsx` unchanged).
+  - "Inventory Results" and "Audit Trail" stay **one** sidebar section ("Results") — not split into two — `Dashboard.jsx`'s internal content/logic is unchanged, only relabeled.
+  - The "X of 5" progress indicator is **both**, not either/or: an app-wide completion tracker on the new Home page (Reporting Unit on file / Scope 1/2/3 activity data entered / Results calculated) **and** a separate per-form progress indicator inside `EntryForm.jsx` itself (that form's own fields grouped into 5 sections) — Andrea's direct correction after the first plan draft only included the Home-page one.
+- **Options considered (dark mode):**
+  1. Keep the existing near-black dark palette (`#161513` bg) from D-23/D-24.
+  2. A dark, Granate-tinted maroon palette — "don't use black in any of the palettes... like a dark red."
+- **Chosen:** Option 2 — `--bg: #1E1013`, `--surface: #2B171B`, `--surface-alt: #3A1F24`, `--border: #4D2A30`, `--surface-strong: #150A0C`; `ink`/`slate`/`accent`/`success`/`warning`/`danger` values unchanged and re-verified against the new, darker bg with the brand doc's own luminance contrast script (all ≥7:1, most far higher). Light mode untouched.
+- **Reasoning:** Explicit, direct instruction from Andrea, not an inference — asked for twice in slightly different words ("inverted colors," "don't use black... use like a dark red") to make sure it wasn't lost.
+- **New home-page scope colors:** `--scope-1/2/3` tokens added (slots 0/2/4 of the existing categorical scale) — deliberately separate from `--cat-slot-0..4` so retuning categories later can't silently change the Home pie chart's colors.
+- **Limitation / what this doesn't solve:** No new business logic changed — Match Step, Fan-out Rule, confidence score, run-rate forecast, RLS, and every Hard Rule from D-13/D-20/D-21 carry over unchanged; this is IA/visual surface only. CLAUDE.md's Business Rules "Navigation"/"Activity Data Entry"/"Emissions Dashboard" subsections were rewritten in place to match (no history rewritten in PROGRESS.md or this file).
+- **Scope creep check:** in scope — explicitly requested, scoped down twice via direct clarification (Reporting Unit naming; dual progress indicators) rather than assumed
+- **Spec version bump:** no
+- **Tags:** #g-3 #rebrand #ia #sidebar-nav #dark-mode #progress-indicators #reporting-unit

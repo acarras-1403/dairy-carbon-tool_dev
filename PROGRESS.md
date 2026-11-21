@@ -1,154 +1,158 @@
-# PROGRESS — PurePastures GHG Tool
+# PROGRESS — Company's Carbon Footprint
 
 > Claude Code: read this file at the start of every session, before touching
 > anything. Update it at every save point. Replace content — do not append.
 > History lives in git.
 
-**Session:** 6 — Tool A/Tool B merge, Phases 1–4 of 4 complete
-**Last updated:** 2026-11-20 — by Claude Code, session 6
+**Session:** 6 — Tool A/Tool B merge (Phases 1–4) + sidebar/Home redesign (D-25), both complete
+**Last updated:** 2026-11-21 — by Claude Code, session 6
 **Live URL:** https://calm-croquembouche-76181c.netlify.app/ — not yet redeployed with this session's work; still serving the pre-merge v7.0 build as of this save point. See Remaining work.
 
 ## Current state
 
-This tool is now the merged home for what were two separate tools/repos:
+This tool is the merged home for what were two separate tools/repos —
 **Activity Data Entry** (this repo, "Tool A") and **Emissions Dashboard**
-("Tool B", `carbon_dashboard_toolb_dev`) — merged per `DECISIONS.md`
-**D-22**, a deliberate reversal of **D-12**'s earlier rejection of exactly
-this. Both halves already shared the `purepastures` Supabase project; no
-schema or RLS changed this session — this was a frontend/build-level merge
-plus a full rebrand.
+("Tool B", `carbon_dashboard_toolb_dev`), merged per `DECISIONS.md` **D-22**
+— now renamed **"Company's Carbon Footprint"** in user-facing text (repo
+name, Supabase project, Netlify URL, `package.json` unchanged) and
+rebuilt around a sidebar information architecture instead of the merge's
+original two top tabs (**D-25**). No schema or RLS changed this session.
 
-Four phases, each its own commit/save point on `claude/tool-build-njvj7x`:
+**Merge, Phases 1–4** (first half of this session — unchanged since last
+save point): stack upgrade (React 19/Vite 8/Tailwind v4), Granate/Sage
+brand replacement, porting Tool B's calculation engine/dashboard
+components into this repo, docs reconciliation. See git history for the
+phase-by-phase detail (each was its own commit on
+`claude/tool-build-njvj7x`).
 
-**Phase 1 — stack upgrade.** React 18→19, Vite 5→8, Tailwind v3→v4
-(CSS-first `@theme` config via `@tailwindcss/vite`, `tailwind.config.js`
-and `postcss.config.js` both deleted). Pure tooling migration — verified
-zero visual/behavioral change before moving on.
+**Redesign (D-25)** — four-destination sidebar nav replaces the two top
+tabs entirely:
 
-**Phase 2 — brand replacement.** Swapped the placeholder "C-MORE" brand
-(Deep Blue/Lime, Figtree — never an official file, just a stand-in) for
-Andrea Carrascosa's real, accessibility-checked personal brand system —
-Granate `#7A1F2B` (the only action colour) / Sage `#8A9A7B` (decorative
-only), Source Serif 4 (headings) + Source Sans 3 (body) self-hosted via
-`@fontsource`, 7px radius everywhere, dark mode via a `data-theme="dark"`
-attribute on `<html>` (was a `.dark` class). New skill at
-`.claude/skills/granate-sage/` replaces `.claude/skills/c-more/`, with the
-full source brand doc alongside it as `SOURCE-brand-system.md`.
+- **Home** (`src/components/Home.jsx`, new) — default landing page. An
+  app-wide completion tracker ("X of 5 complete": Reporting Unit on file
+  for the current year, Scope 1/2/3 activity data entered, Results
+  calculated), each item linking to the section that resolves it; a Scope
+  1/2/3 pie chart (`ScopePieChart.jsx`, new — pure CSS conic-gradient, a
+  different chart type from Results' stacked bar by design) summing
+  `result_tco2e` per scope via the existing `fetchDashboardData()`;
+  missing-activity-data callouts per scope; four KPI tiles (total tCO2e,
+  activity data entries, facilities on file this year, pending
+  validation).
+- **Reporting Unit** (`src/components/ReportingUnit.jsx`, new) — Facility
+  Data promoted from a modal to its own full page. Reuses `FacilityForm`/
+  `FacilityTable`/`Collapsible` unchanged. `FacilityModal.jsx` deleted. A
+  blocked Activity Data submit now navigates here (`App.jsx`'s
+  `activeSection` → `'facility'`, carrying the same prefill/blocked state
+  the modal used to take) instead of opening a dialog.
+- **Activity Data Entry** — structurally the same (`CsvImport`,
+  `DataReview`, `EntryForm`, tucked `EntryTable`), plus: a KPI tile row
+  (total entries, entries this month, needs-review count, last entry
+  logged — reuses the same `StatTile` component as Home); the old
+  Facility-Data button-row card dropped in favor of one small inline link
+  in the intro paragraph; `EntryForm.jsx` gained its own **per-form**
+  progress indicator (5 sections — facility/period, emission source,
+  activity value & quality, supporting info, consent — each with a
+  one-line "why this matters" note and a ✓/missing marker, "X of 5
+  sections ready"). This is in addition to Home's app-wide tracker, not
+  instead of it (confirmed explicitly — see DECISIONS.md D-25). Still a
+  single-page form.
+- **Results** (renamed from "Emissions Dashboard") — `Dashboard.jsx` and
+  `EmissionsDashboard.jsx`'s existence-check wrapper are unchanged
+  internally; only UI copy and the sidebar label changed. Still one
+  combined section (scope diagram + inventory table + click-to-pin audit
+  trail) — not split into separate "Inventory Results" and "Audit Trail"
+  destinations.
 
-**Phase 3 — port Tool B in.** Copied Tool B's `src/lib/` (calculation
-engine, EF matching, forecast, CSV/PDF export, labels, tooltips) and
-`src/components/` (Dashboard, FilterBar, ScopeDiagram, InventoryTable,
-SourceRow, ForecastPanel, AuditPanel, ConfidenceSwatch,
-MultiSelectDropdown, InfoIcon) into this repo. `EmissionsDashboard.jsx` now
-mounts the real `Dashboard` component on data existing, instead of
-redirecting to Tool B's separately-deployed site. `Dashboard.jsx` was
-adapted for embedding — dropped its own duplicate header/ThemeToggle/
-full-page chrome (this app's `App.jsx` already supplies all of that);
-Recalculate/CSV/PDF buttons moved into a button-row card matching this
-tool's existing pattern. The brand's full-bleed requirement is preserved
-for the inventory table specifically: `App.jsx`'s `<main>` lost its
-page-wide `max-w-4xl`, pushed down instead into `ActivityDataEntry`,
-`Dashboard`'s own constrained section, and the `loadError` banner
-individually, so `InventoryTable` alone can run edge-to-edge.
+**Dark mode (D-25):** replaced the near-black palette from Phase 2/D-24
+with a maroon-tinted one — `--bg: #1E1013`, `--surface: #2B171B`,
+`--surface-alt: #3A1F24`, `--border: #4D2A30`, `--surface-strong:
+#150A0C`. `ink`/`slate`/`accent`/`success`/`warning`/`danger` values
+unchanged, re-verified against the new bg with the brand doc's own
+contrast script (all comfortably ≥7:1). Light mode untouched. New
+`--scope-1/2/3` tokens added for Home's pie chart (slots 0/2/4 of the
+existing categorical scale — kept separate from `.cat-slot-0..4` so
+retuning categories later can't silently change the pie chart).
 
-Every ported component's token classes were renamed onto this tool's
-existing names (`bg-bg`→`bg-offwhite`, `text-primary`/`accent-primary`→
-`text-accent`/`accent-accent`); a pre-existing dead class
-(`text-deep-blue`, unmapped in either tool) was fixed to `text-accent`.
-New tokens added: `bg-surface-strong`/`text-on-surface-strong` (a
-theme-invariant dark "chip" for tooltips and table sub-headers),
-`font-data`/`.data-face` (monospace, tabular figures), `.cat-slot-0..4`
-(the brand's 5-step categorical scale — up from Tool B's original 3
-slots). `.btn-accent` (this tool's name) and `.btn-secondary` (Tool B's
-name) — the same bordered/outlined button role in both — consolidated to
-one name, `.btn-secondary`. `pdfExport.js`'s hardcoded RGB triplets
-(PDFs can't read CSS variables) updated from Deep Blue/Ink/Off White/Line
-to Granate/Ink/Off White/Line. Added `jspdf`, `jspdf-autotable`,
-`papaparse` dependencies. Also swept the remaining `dark:text-red-*`
-error-message spots across this tool's own forms onto the new `text-danger`
-token, now that one exists.
+**Shared new components:** `Sidebar.jsx` (responsive lateral nav, 4
+destinations), `StatTile.jsx` (icon + number + label KPI card, used by
+both Home and Activity Data Entry), `icons.jsx` (small inline line-art
+SVGs — building, document, leaf, check, warning, clock, chart).
 
-**Phase 4 — docs.** This file, `CLAUDE.md`, and `docs/supabase-setup.md`
-reconciled into single merged versions describing the whole tool (see
-each file's own history for what changed). `DECISIONS.md` gained two new
-entries (stack upgrade, brand replacement) alongside D-22's merge
-decision from earlier this session.
+`App.jsx` rewritten: `activeTab` (`'dashboard'|'entry'`) → `activeSection`
+(`'home'|'facility'|'entry'|'results'`); the `facilityModal` open/close
+state replaced with a simpler `facilityPrefill` ({blocked, prefill}) since
+Reporting Unit is always-present now, not a dismissable overlay; header
+keeps just the brand mark/wordmark + theme toggle, sidebar takes the nav.
+`onOpenFacilityModal` renamed to `onGoToReportingUnit` across
+`ActivityDataEntry.jsx`/`DataReview.jsx`/`App.jsx` for accuracy now that
+there's no modal.
 
-**Verification:** each phase got its own `npm run build` + headless-browser
-pass before the next started. Phase 3's dashboard rendering (scope diagram,
-full-bleed inventory table, confidence swatches, validation pills,
-click-to-pin audit panel) was verified with Playwright route interception
-standing in for the sandbox's blocked Supabase network — canned
-`activity_data`/`facility_reporting_period`/`ef_table`/`emissions_results`
-rows, confirmed correct in both themes. Activity Data Entry / Facility Data
-modal re-confirmed with no regressions despite `App.jsx`'s layout changes.
+**Verification:** `npm run build` clean after the redesign. Full
+Playwright pass (route interception standing in for the sandbox's blocked
+Supabase network, canned `activity_data`/`facility_reporting_period`/
+`ef_table`/`emissions_results` rows): all four sidebar destinations
+render correctly; Home's completion tracker, KPI tiles and pie chart
+reflect the mocked data correctly in both themes; the blocked-submit flow
+was driven end-to-end (filled the manual form for a facility/year with no
+Reporting Unit record, submitted, confirmed it navigated to Reporting
+Unit with the correct pre-fill and warning banner); Activity Data Entry's
+new KPI row and per-form progress indicator (5/5 ready after filling the
+form) confirmed; Results page confirmed unchanged behavior in both
+themes; no console/page errors in any pass. Screenshots not committed
+(verification artifacts only).
 
 ## Last session
 
-Session 6: executed the four-phase merge plan approved at the start of
-this session (stack upgrade → rebrand → port Tool B → docs), building on
-session 5's D-22 decision log entry. All four phases committed and pushed
-to `claude/tool-build-njvj7x`; not yet merged to `main` or redeployed —
-see Remaining work.
+Session 6 (this save point): after the four-phase merge (see git history),
+the builder asked for a broader redesign in the same session — product
+rename, sidebar IA replacing the two top tabs, Facility Data promoted to
+a full page, a new Home page (completion tracker + Scope 1/2/3 pie chart +
+KPIs), dual progress indicators (app-wide on Home, per-form on Activity
+Data Entry), and a maroon (not near-black) dark mode. Clarified via two
+rounds of `AskUserQuestion` (confirmed: new name "Company's Carbon
+Footprint"; Facility Data → full page with navigate-on-block; Results as
+one combined section, not two; both progress indicators, not either/or;
+"Reporting Unit" without "Information"). Implemented, verified, logged as
+DECISIONS.md D-25. Not yet merged to `main` or redeployed.
 
 ## Remaining work
 
-- [ ] Merge `claude/tool-build-njvj7x` to `main` and confirm the merged tool auto-deploys to https://calm-croquembouche-76181c.netlify.app/ (or wherever the builder wants the merged tool to live going forward — confirm this hasn't changed)
-- [ ] Live acceptance pass against the real Supabase data once deployed — this session's dashboard verification used mocked network responses (sandbox blocks `*.supabase.co`), not a live round-trip
-- [ ] Decide `--color-serious` (`#ec835a`, the forecast panel's suppressed-months banner) — kept as-is from Tool B pending builder sign-off, per the plan; fold into `warning` or keep as its own one-off
-- [ ] Confirm the derived `success`/`warning`/`danger` token values (DECISIONS.md) visually, now that they're live in the merged UI — they were contrast-checked but not yet explicitly approved by the builder
-- [ ] Decide the fate of Tool B's now-redundant standalone repo (`carbon_dashboard_toolb_dev`) and its own Netlify site — builder asked to defer this until the merge is confirmed working (this session's plan, Phase 5)
-- [ ] Bundle-size warning from `npm run build` (one chunk >500kB, driven by jsPDF/html2canvas) — not addressed this session, flagged for a future pass if it matters (code-splitting the PDF export path)
-- [ ] Carried from session 5: walk spec Section 13 acceptance criteria 25–38 against the live deploy once it's redeployed with this session's work
+- [ ] Merge `claude/tool-build-njvj7x` to `main` and confirm auto-deploy to https://calm-croquembouche-76181c.netlify.app/ (or wherever the builder wants it to live — confirm this hasn't changed)
+- [ ] Live acceptance pass against real Supabase data once deployed — all verification this session (merge + redesign) used mocked network responses (sandbox blocks `*.supabase.co`), not a live round-trip
+- [ ] Decide `--color-serious` (`#ec835a`, the forecast panel's suppressed-months banner) — kept as-is from Tool B pending builder sign-off
+- [ ] Confirm the derived `success`/`warning`/`danger` token values (DECISIONS.md D-24) visually, now that they're live in the merged + redesigned UI — contrast-checked but not yet explicitly approved by the builder
+- [ ] Decide the fate of Tool B's now-redundant standalone repo (`carbon_dashboard_toolb_dev`) and its own Netlify site — deferred until the merge is confirmed working
+- [ ] Bundle-size warning from `npm run build` (one chunk >500kB, driven by jsPDF/html2canvas) — not addressed, flagged for a future pass (code-splitting the PDF export path)
+- [ ] Carried from session 5: walk spec Section 13 acceptance criteria 25–38 against the live deploy once it's redeployed
+- [ ] CLAUDE.md's Business Rules section was rewritten for the new sidebar IA this session — docs/product-spec.md (v7.0, Activity Data Entry half) was NOT updated to match, since it's the original Tool A spec and this IA change came from direct builder request this session, not a spec revision; flag this gap if a future session needs the full spec to reflect the current nav
 
 ## Build decisions
 
-- Merge home is this repo (`dairy-carbon-tool_dev`), not Tool B's — confirmed by the builder. Tool A's components had zero inline hex (clean mechanical rebrand) and a far smaller surface than Tool B's; upgrading Tool A's stack to match Tool B's newer one was judged lower-risk than backporting Tool B's React 19/Tailwind v4-specific code down to Tool A's older stack.
-- CSS custom properties for every brand token, not `dark:` variant
-  duplication — carried forward from the pre-merge build, now pointing at
-  Granate/Sage values instead of Deep Blue/Lime. `--accent-rgb` (and the
-  new `--success-rgb`/`--warning-rgb`/`--danger-rgb`) stored as RGB triplets
-  so Tailwind's opacity modifiers resolve.
-- Dark mode switched from a `.dark` class to a `data-theme="dark"`
-  attribute on `<html>` — matches the uploaded brand doc's own convention,
-  not a pre-existing requirement from either tool.
-- Secondary text tiers (brand doc's `text-muted` vs `text-meta`) collapsed
-  to one (`slate`) — confirmed by the builder; neither tool ever had two.
-- Corner radius: adopted the brand's 7px everywhere, replacing the
-  pre-merge 14px `card` radius — confirmed by the builder as a deliberate,
-  visible change.
-- success/warning/danger tokens derived (not in the brand doc) and
-  contrast-checked with the doc's own luminance script — builder asked for
-  proposed values rather than supplying them; see DECISIONS.md for exact
-  hex/ratios. Treat as provisional until explicitly approved.
-- `.cat-slot` categorical palette expanded from Tool B's original 3 slots
-  to 5, matching the brand doc's full categorical scale rather than
-  preserving Tool B's narrower pre-existing choice.
-- Tool B's own `theme.js`/`ThemeToggle.jsx`/`supabaseClient.js` were not
-  ported — Tool A's versions (already updated for the new brand) serve
-  both halves of the merged app from one copy each.
+- Merge home is this repo (`dairy-carbon-tool_dev`), not Tool B's — confirmed by the builder (see D-22/D-23 for the merge-specific reasoning).
+- Product renamed to "Company's Carbon Footprint" in user-facing text and CLAUDE.md's Identity/H1 only — repo name, Supabase project, Netlify URL, `package.json` `name`, and historical PROGRESS.md/DECISIONS.md log text all left untouched. "PurePastures Dairy Cooperative" stays as the client name in descriptive copy (Results' "About this dashboard," tooltips.js) — only the tool's own product name changed.
+- Sidebar nav (persistent, 4 destinations) replaces the two top tabs entirely — confirmed by the builder, inspired by their LCA-Studio build.
+- Facility Data is a full page now, not a modal — a blocked submit navigates instead of opening a dialog. Confirmed explicitly (not assumed) via `AskUserQuestion`.
+- "Reporting Unit" (not "Reporting Unit Information") — builder's direct correction mid-session.
+- Results stays one sidebar section covering both the inventory/diagram and the audit trail — confirmed explicitly, not split into two.
+- Both an app-wide (Home) and a per-form (Activity Data Entry) progress indicator exist — the builder's first approval message was actually a correction, not pure sign-off: "also include this in the Per form too." Logged so a future session doesn't collapse these back into one.
+- Dark mode is maroon-tinted (`#1E1013` family), not near-black — explicit, repeated builder instruction ("don't use black... use like a dark red"). Light mode untouched; `ink`/`slate`/`accent`/status tokens unchanged and re-verified for contrast against the new bg.
+- Scope 1/2/3 pie-chart colors (`--scope-1/2/3`) are their own tokens, not reused from `.cat-slot-0..4` directly — deliberate, so future category-palette retuning can't silently change Home's chart.
+- `onOpenFacilityModal` renamed to `onGoToReportingUnit` throughout — the modal concept no longer exists, so the old name would have been misleading.
+- `StatTile`/`icons.jsx` are shared, not duplicated per page — Home and Activity Data Entry both use the same KPI tile component and icon set.
 
 ## Known issues
 
-- Not yet deployed — `main` and the live site still reflect the pre-merge
-  v7.0 build. This save point is on `claude/tool-build-njvj7x` only.
-- The `success`/`warning`/`danger` palette is a confident proposal, not a
-  builder-confirmed addition to the brand system (unlike everything else
-  in `.claude/skills/granate-sage/SKILL.md`, which comes from the approved
-  source file). Flag this if the builder asks about it.
-- Carried from session 5, still true: this session's sandbox again blocked
-  outbound HTTPS to `*.supabase.co`/`*.netlify.app` (org egress policy) —
-  dashboard verification used mocked network responses instead of a live
-  round-trip (see Current state).
-- Carried from session 5: two Supabase projects outside this tool's
-  canonical schema remain in the org (`purepastures-ghg`, id
-  `uioxedvoaqtijtrvzxzl`; `acarras-1403's Project`, id
-  `pcjsoczuzfbniwqxgfji`, INACTIVE). Cleanup remains a builder decision.
+- Not yet deployed — `main` and the live site still reflect the pre-merge, pre-redesign v7.0 build. This save point is on `claude/tool-build-njvj7x` only.
+- The `success`/`warning`/`danger` palette is a confident proposal, not a builder-confirmed addition to the brand system (carried from D-24, unaffected by this session's redesign).
+- Carried from session 5, still true: this session's sandbox again blocked outbound HTTPS to `*.supabase.co`/`*.netlify.app` (org egress policy) — all verification used mocked network responses instead of a live round-trip.
+- Carried from session 5: two Supabase projects outside this tool's canonical schema remain in the org (`purepastures-ghg`, id `uioxedvoaqtijtrvzxzl`; `acarras-1403's Project`, id `pcjsoczuzfbniwqxgfji`, INACTIVE). Cleanup remains a builder decision.
+- Home's "Scope N activity data entered" checklist items read Scope off `src/data/lookups.js`'s own category→scope hierarchy (Tool A's entry-time classification), while Results' scope totals read `scope` off the matched `ef_table` row (Tool B's classification, via `emissions_results`). These are two different scope-assignment paths that happen to agree for the current fixed `SOURCES`/`ef_table` data, but aren't structurally guaranteed to — a future session changing either lookup table should double check they still line up.
 
 ## Notes for next session
 
 Merge `claude/tool-build-njvj7x` to `main` once the builder confirms, and
-redeploy. Then do a live pass: confirm the dashboard renders correctly
-against real data (not mocked), confirm the derived status-color palette
-reads correctly in practice, and revisit the deferred Tool B
-repo/site-retirement decision.
+redeploy. Then do a live pass: confirm Home's completion tracker and pie
+chart render correctly against real data (not mocked), confirm the
+Reporting Unit blocked-submit flow end-to-end live, confirm the derived
+status-color palette reads correctly in practice, and revisit the
+deferred Tool B repo/site-retirement decision.

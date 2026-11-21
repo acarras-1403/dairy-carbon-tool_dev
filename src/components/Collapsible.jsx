@@ -2,8 +2,8 @@ import { useState } from 'react'
 
 // Collapsed-by-default disclosure (spec v7.0 Section 8) — replaces v6.0's
 // separate Records tabs. Used for "Past activity data entries" at the
-// bottom of Activity Data Entry and "Past facility data entries" inside the
-// Facility Data modal. Purely presentational: children render only what the
+// bottom of Activity Data Entry and "Past facility data entries" on the
+// Reporting Unit page. Purely presentational: children render only what the
 // caller passes, this just owns the expand/collapse state.
 export default function Collapsible({ title, count, children }) {
   const [open, setOpen] = useState(false)
